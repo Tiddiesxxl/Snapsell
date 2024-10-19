@@ -1,7 +1,5 @@
 <template>
   <div>
-    <P>
-      HELOOOO
-    </P>
+   <p> trial</p>
   </div>
 </template>
