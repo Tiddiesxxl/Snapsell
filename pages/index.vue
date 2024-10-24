@@ -15,6 +15,28 @@
         </nav>
       </header>
     </div>
+
+<div class="content">
+  <p> Focus on what is important !</p>
+
+</div>
+
+      <div class="big">
+
+        <div class="in-big1">
+
+        </div>
+
+        <div class="in-big2">
+
+        </div>
+
+      </div>
+     <!-- <div>
+        <img src="~assets/images/1st.jpg" alt="error" class="thumbnail" />
+      </div> -->
+      
+   
   </template>
   
   <script>
@@ -33,26 +55,57 @@
   </script>
 
 <style scoped>
+.big{
+  height: 800px;
+  background-color: red;
+  display: flex;
+}
+.in-big1{
+  height: 800px;
+  width: 1000px;
+  background-color: purple;
+}
+.in-big2{
+  height: 800px;
+  width: 1000px;
+  background-color: black;
+}
+
 header {
   background-color: #ffffff; /* Change to your desired color */
   color: rgb(0, 0, 0);
-  padding: 10px;
+  padding: 0px;
+  position: fixed; /* Fix the navbar at the top */
+  width: 100%; /* Ensure it spans the entire width */
+  top: 0; /* Stick the navbar to the top of the page */
+  z-index: 1000; /* Make sure it's above other content */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Optional: add shadow for a more prominent look */
 }
 
 .nav-container {
   display: flex;
-  justify-content: space-between; /* Aligns items to opposite ends */
+  justify-content: space-between; /* Align logo and links on opposite ends */
   align-items: center; /* Vertically centers items */
+  padding: 0 20px; /* Add padding on both sides */
+}
+
+.content{
+  margin-top: 90px;
+  text-align: center;
+  font-size: xx-large;
+
 }
 
 .nav-links {
   list-style: none; /* Remove bullet points */
   display: flex; /* Align links horizontally */
+  margin: 0; /* Remove default margin */
+  padding: 0; /* Remove default padding */
   transition: max-height 0.3s ease; /* Smooth transition for dropdown */
 }
 
 .nav-links li {
-  margin: 10px 0; /* Space between links */
+  margin-right: 20px; /* Space between links */
 }
 
 .nav-links li a {
@@ -80,6 +133,13 @@ header {
   font-size: x-large; /* Default font size for logo text */
 }
 
+.thumbnail{
+  padding-left: 5%;
+  padding-top: 5%;
+  width: 20%;
+  height: 30%;
+}
+
 /* Toggle Button */
 .toggle-button {
   display: none; /* Hidden by default */
@@ -102,6 +162,23 @@ header {
     width: 150px; /* Set a width for the dropdown */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* Add shadow for depth */
   }
+.content{
+  font-size:large;
+}
+  .big{
+    display: block;
+  }
+
+  .in-big1{
+  height: 700px;
+  width: 800px;
+  background-color: purple;
+}
+.in-big2{
+  height: 700px;
+  width: 800px;
+  background-color: black;
+}
 
   .nav-links.active {
     display: flex; /* Show links when active */
@@ -130,6 +207,23 @@ header {
     font-size: 0.8em; /* Further reduce font size for very small screens */
     padding: 2px 8px; /* Further reduce padding */
   }
+  .big{
+    display: block;
+  }
+
+  .in-big1{
+  height: 700px;
+  width: 400px;
+  background-color: purple;
+}
+.in-big2{
+  height: 700px;
+  width: 400px;
+  background-color: black;
+}
+.content{
+  font-size: medium;
+}
 
   .logo-image {
     width: 60px; /* Further reduce logo size */
@@ -146,6 +240,12 @@ header {
     display: flex; /* Always display links on larger screens */
   }
 }
+
+/* Push content down to avoid it being hidden under the fixed navbar */
+body {
+  padding-top: 70px; /* Adjust according to the height of the navbar */
+}
 </style>
+
 
 
