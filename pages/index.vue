@@ -1,251 +1,383 @@
 <template>
-    <div>
-      <header>
-        <nav>
-          <div class="nav-container">
-            <span class="logo" style="font-size:x-large;">
-              SNAP-SELL <img src="~assets/images/pc.png" alt="Logo" class="logo-image" />
-            </span>
-            <button @click="toggleMenu" class="toggle-button">☰</button> <!-- Hamburger icon -->
-            <ul class="nav-links" :class="{ 'active': isMenuActive }">
-              <li><nuxt-link to="/login">Login</nuxt-link></li>
-              <li><nuxt-link to="/signup">Signup</nuxt-link></li>
-            </ul>
+  <div class="container">
+    <!-- Navbar -->
+    <header>
+      <nav class="navbar">
+        <div class="logo">
+          <img src="~assets/images/pc1.png" alt="Logo" class="logo-img" />
+          <span>Snap Sell</span>
+        </div>
+        <div class="menu">
+          <nuxt-link to="/api/login" external class="menu-link">LOGIN</nuxt-link>
+          <nuxt-link to="/api/register" external class="menu-link">SIGNUP</nuxt-link>
+        </div>
+        <!-- Mobile Menu Button -->
+        <div class="menu-icon" @click="toggleMenu">☰</div>
+      </nav>
+      <!-- Responsive Menu -->
+      <transition name="slide-fade">
+        <div v-if="showMenu" class="mobile-menu">
+          <div class="menu-header">
+            <div class="close-icon" @click="toggleMenu">×</div>
           </div>
-        </nav>
-      </header>
-    </div>
-
-<div class="content">
-  <p> Focus on what is important !</p>
-
-</div>
-
-      <div class="big">
-
-        <div class="in-big1">
-
+          <nuxt-link to="/login" class="menu-link">LOGIN</nuxt-link>
+          <nuxt-link to="/signup" class="menu-link">SIGNUP</nuxt-link>
         </div>
+      </transition>
+    </header>
 
-        <div class="in-big2">
-
-        </div>
-
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-text">
+        <h1>Capture Moments, Share Memories</h1>
+        <p>Your go-to platform for professional and personal photography.</p>
+        <button class="cta-button">Explore Collections</button>
       </div>
-     <!-- <div>
-        <img src="~assets/images/1st.jpg" alt="error" class="thumbnail" />
-      </div> -->
-      
-   
-  </template>
-  
-  <script>
-  export default {
-    data() {
-      return {
-        isMenuActive: false, // State to track the menu visibility
-      };
+      <div class="hero-image">
+        <img src="~assets/images/2nd.jpg" alt="Photography hero" />
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <main>
+      <!-- Popular Categories Section -->
+      <section class="categories">
+        <h2>Popular Categories</h2>
+        <div class="category-cards">
+          <div class="category-card" v-for="category in categories" :key="category.name">
+            <img :src="category.image" :alt="category.name" />
+            <h3>{{ category.name }}</h3>
+          </div>
+        </div>
+      </section>
+
+      <!-- Featured Photographers Section -->
+      <section class="trending">
+        <h2>Featured Photographers</h2>
+        <div class="photographer-cards">
+          <div class="photographer-card" v-for="photographer in photographers" :key="photographer.name">
+            <img :src="photographer.image" :alt="photographer.name" />
+            <div class="info">
+              <h3>{{ photographer.name }}</h3>
+              <p>{{ photographer.specialty }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      categories: [
+        { name: "Portraits", image: "https://i.pinimg.com/564x/1d/24/3e/1d243e02982bb3a941ce26b1bcf1143b.jpg" },
+        { name: "Landscapes", image: "https://i.pinimg.com/564x/f3/b4/b8/f3b4b8e02a7b7ab2b1c9f320a51c070f.jpg" },
+        { name: "Wildlife", image: "https://i.pinimg.com/564x/b7/f4/91/b7f4919408f9ebeb088018477a809f07.jpg" },
+        { name: "Events", image: "https://i.pinimg.com/564x/03/7a/9d/037a9d8b6bcf8c4303b3b783a3d8ec17.jpg" },
+      ],
+      photographers: [
+        { name: "Benedict Odhiambo", specialty: "Event Photographer", image: "https://i.postimg.cc/4dc87W4s/ben.jpg" },
+      ],
+      showMenu: false,
+    };
+  },
+  methods: {
+    toggleMenu() {
+      this.showMenu = !this.showMenu;
     },
-    methods: {
-      toggleMenu() {
-        this.isMenuActive = !this.isMenuActive; // Toggle menu visibility
-      },
-    },
-  };
-  </script>
+  },
+};
+</script>
 
 <style scoped>
-.big{
-  height: 800px;
-  background-color: red;
-  display: flex;
+/* Base Styles */
+.container {
+  font-family: 'Poppins', sans-serif;
+  color: #333;
+  background-color: #f9f9f9;
+  overflow-x: hidden;
 }
-.in-big1{
-  height: 800px;
-  width: 1000px;
-  background-color: purple;
+.menu-header {
+  position: absolute;
+  top: 20px;
+  right: 20px;
 }
-.in-big2{
-  height: 800px;
-  width: 1000px;
-  background-color: black;
+.close-icon {
+  font-size: 24px;
+  cursor: pointer;
+  color: #555;
+}
+.menu-link {
+  padding: 8px 16px; /* Add padding for spacing inside the border */
+  border: 2px solid #555; /* Border color and thickness */
+  border-radius: 5px; /* Rounded corners, optional */
+  color: #555; /* Link text color */
+  text-decoration: none;
+  transition: background-color 0.3s, color 0.3s; /* Add a hover transition */
 }
 
+.menu-link:hover {
+  background-color: #555; /* Background color on hover */
+  color: #fff; /* Text color on hover */
+}
 header {
-  background-color: #ffffff; /* Change to your desired color */
-  color: rgb(0, 0, 0);
-  padding: 0px;
-  position: fixed; /* Fix the navbar at the top */
-  width: 100%; /* Ensure it spans the entire width */
-  top: 0; /* Stick the navbar to the top of the page */
-  z-index: 1000; /* Make sure it's above other content */
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Optional: add shadow for a more prominent look */
-}
-
-.nav-container {
+  background: #ffffff;
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+  padding: 20px 0px;
   display: flex;
-  justify-content: space-between; /* Align logo and links on opposite ends */
-  align-items: center; /* Vertically centers items */
-  padding: 0 20px; /* Add padding on both sides */
+  align-items: center;
+  justify-content: space-between;
+  position: fixed; /* Fixes the header to the top */
+  top: 0;
+  left: 0;
+  width: 100%; /* Ensures the header spans the full width of the viewport */
+  z-index: 10;
+}
+.navbar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0 20px; /* Add padding for spacing */
 }
 
-.content{
-  margin-top: 90px;
-  text-align: center;
-  font-size: xx-large;
-
+.navbar .logo {
+  display: flex;
+  align-items: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #555;
 }
 
-.nav-links {
-  list-style: none; /* Remove bullet points */
-  display: flex; /* Align links horizontally */
-  margin: 0; /* Remove default margin */
-  padding: 0; /* Remove default padding */
-  transition: max-height 0.3s ease; /* Smooth transition for dropdown */
+.logo-img {
+  width: 50px;
+  margin-right: 10px;
 }
-
-.nav-links li {
-  margin-right: 20px; /* Space between links */
-}
-
-.nav-links li a {
-  color: rgb(0, 0, 0); /* Link color */
-  text-decoration: none; /* Remove underline */
-  padding: 10px 15px; /* Add padding for better spacing */
-  border: 2px solid rgb(2, 2, 2); /* Create a border around the link */
-  border-radius: 4px; /* Optional: add rounded corners */
-  transition: background-color 0.3s; /* Smooth transition for hover effect */
-}
-
-.nav-links li a:hover {
-  background-color: rgba(0, 0, 0, 0.1); /* Change background on hover */
-}
-
-.logo-image {
-  width: 100px; /* Default logo width */
-  height: auto; /* Keep the aspect ratio */
-  margin-right: 8px; /* Space between the image and the text */
-  vertical-align: middle; /* Align image with text */
-}
-
 .logo {
-  text-decoration: overline;
-  font-size: x-large; /* Default font size for logo text */
+  display: flex;
+  align-items: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #555;
+  gap: 10px;
 }
 
-.thumbnail{
-  padding-left: 5%;
-  padding-top: 5%;
-  width: 20%;
-  height: 30%;
+.menu {
+  display: flex;
+  gap: 40px;
+  margin-left: auto; /* Push the menu to the right */
 }
 
-/* Toggle Button */
-.toggle-button {
-  display: none; /* Hidden by default */
-  font-size: 24px; /* Size of the button icon */
-  background: none; /* Remove default button styles */
-  border: none; /* Remove border */
-  cursor: pointer; /* Change cursor to pointer */
+.menu-icon {
+  display: none;
+  font-size: 24px;
+  cursor: pointer;
+  margin-left: auto; /* This will push it to the right */
+  padding-right: 20px;
+}
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 250px;
+  height: 100vh;
+  background-color: #ffffff;
+  padding: 40px 20px;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.mobile-menu.active {
+  transform: translateX(0);
 }
 
-/* Media Queries for Responsiveness */
+
+.hero {
+  display: flex;
+  align-items: center;
+  padding: 80px 40px;
+  background: linear-gradient(135deg, #5f9ea0, #4b0082);
+  flex-wrap: wrap;
+}
+
+.hero-text {
+  flex: 1;
+  color: #fff;
+}
+
+.hero-image img {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 15px;
+}
+
+/* Category Cards */
+.categories .category-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 20px 0;
+  align-items: center;
+}
+
+.category-card img, .photographer-card img {
+  max-width: 100%; /* Ensure images do not exceed their parent width */
+  height: auto; /* Maintain aspect ratio */
+}
+
+.category-card {
+  width: 200px; /* Fixed width */
+  height: 250px; /* Fixed height for uniformity */
+  text-align: center;
+  padding: 15px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden; /* Ensures that overflowing content is hidden */
+}
+.category-card img {
+  width: 100%; /* Makes the image responsive */
+  height: 170px; /* Fixed height for the image */
+  object-fit: cover; /* Ensures the image covers the area without distortion */
+}
+
+.category-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Photographer Cards */
+.trending .photographer-cards {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 20px 0;
+  align-items: center;
+}
+
+.photographer-card {
+  width: 200px; /* Fixed width */
+  height: 250px; /* Fixed height for uniformity */
+  text-align: center;
+  padding: 15px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden; /* Ensures that overflowing content is hidden */
+}
+
+.photographer-card img{
+  width: 100%; /* Makes the image responsive */
+  height: 170px; /* Fixed height for the image */
+  object-fit: cover; /* Ensures the image covers the area without distortion */
+}
+
+
+.photographer-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.info {
+  text-align: center;
+  margin-top: 10px;
+}
+
+/* Recent Searches */
+.recent-searches .search-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.search-tag {
+  background-color: #e0f7fa;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  color: #00796b;
+  display: flex;
+  align-items: center;
+}
+
+.close-btn {
+  margin-left: 8px;
+  cursor: pointer;
+  color: #ff5252;
+}
+
+/* Updated transition classes */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-fade-enter,
+.slide-fade-leave-to {
+  transform: translateX(100%);
+}
+
+.slide-fade-enter-to,
+.slide-fade-leave {
+  transform: translateX(0);
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-  .nav-links {
-    display: none; /* Hide links by default on small screens */
-    flex-direction: column; /* Stack links vertically */
-    position: absolute; /* Position links absolutely */
-    background: white; /* Background color for links */
-    right: 0; /* Align links to the right */
-    top: 50px; /* Adjust based on header height */
-    border: 1px solid rgb(2, 2, 2); /* Optional border */
-    width: 150px; /* Set a width for the dropdown */
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* Add shadow for depth */
+  .menu {
+    display: none;
   }
-.content{
-  font-size:large;
-}
-  .big{
+
+  .menu-icon {
     display: block;
+    margin-left: auto;
   }
 
-  .in-big1{
-  height: 700px;
-  width: 800px;
-  background-color: purple;
-}
-.in-big2{
-  height: 700px;
-  width: 800px;
-  background-color: black;
-}
-
-  .nav-links.active {
-    display: flex; /* Show links when active */
+  .hero {
+    flex-direction: column;
+    text-align: center;
   }
 
-  .toggle-button {
-    display: block; /* Show button on small screens */
+  .hero-text {
+    margin-bottom: 20px;
   }
-
-  .nav-links li a {
-    font-size: 0.9em; /* Reduce font size for links */
-    padding: 5px 10px; /* Reduce padding */
+  .mobile-menu .menu-link {
+    display: block;
+    text-align: center;
+    margin: 10px 0;
   }
-
-  .logo-image {
-    width: 80px; /* Reduce logo size */
+  .category-cards,
+  .photographer-cards {
+    flex-direction: column;
   }
-
-  .logo {
-    font-size: large; /* Reduce logo text size */
+  .mobile-menu[v-if="showMenu"] {
+    transform: translateX(0);
   }
 }
 
 @media (max-width: 480px) {
-  .nav-links li a {
-    font-size: 0.8em; /* Further reduce font size for very small screens */
-    padding: 2px 8px; /* Further reduce padding */
-  }
-  .big{
-    display: block;
+  header {
+    padding: 10px 20px;
   }
 
-  .in-big1{
-  height: 700px;
-  width: 400px;
-  background-color: purple;
-}
-.in-big2{
-  height: 700px;
-  width: 400px;
-  background-color: black;
-}
-.content{
-  font-size: medium;
-}
-
-  .logo-image {
-    width: 60px; /* Further reduce logo size */
+  .hero-text h1 {
+    font-size: 1.8rem;
   }
 
-  .logo {
-    font-size: medium; /* Further reduce logo text size */
+  .category-card img,
+  .photographer-card img {
+    height: 150px;
   }
-}
 
-/* Ensuring links are visible on larger screens */
-@media (min-width: 769px) {
-  .nav-links {
-    display: flex; /* Always display links on larger screens */
+  .search-tag {
+    font-size: 0.8rem;
+    padding: 8px 10px;
   }
-}
-
-/* Push content down to avoid it being hidden under the fixed navbar */
-body {
-  padding-top: 70px; /* Adjust according to the height of the navbar */
 }
 </style>
-
-
-
