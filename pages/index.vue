@@ -8,8 +8,8 @@
           <span>Snap Sell</span>
         </div>
         <div class="menu">
-          <nuxt-link to="/api/login" external class="menu-link">LOGIN</nuxt-link>
-          <nuxt-link to="/api/register" external class="menu-link">SIGNUP</nuxt-link>
+          <nuxt-link to="/login"  class="menu-link">LOGIN</nuxt-link>
+          <nuxt-link to="/login?mode=signup" class="menu-link">SIGNUP</nuxt-link>
         </div>
         <!-- Mobile Menu Button -->
         <div class="menu-icon" @click="toggleMenu">☰</div>
@@ -20,8 +20,8 @@
           <div class="menu-header">
             <div class="close-icon" @click="toggleMenu">×</div>
           </div>
-          <nuxt-link to="/login" class="menu-link">LOGIN</nuxt-link>
-          <nuxt-link to="/signup" class="menu-link">SIGNUP</nuxt-link>
+          <nuxt-link to="/login"  class="menu-link">LOGIN</nuxt-link>
+          <nuxt-link to="/login?mode=signup" class="menu-link">SIGNUP</nuxt-link>
         </div>
       </transition>
     </header>
@@ -69,6 +69,7 @@
 </template>
 
 <script>
+
 export default {
   data() {
     return {

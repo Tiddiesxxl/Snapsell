@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   css: [
-    '~/assets/styles/main.css',
+    '~/assets/styles/main.css','vue-toastification/dist/index.css',
   ],
 
   app:{
@@ -19,4 +19,7 @@ export default defineNuxtConfig({
 },
 
   modules: ['@nuxtjs/kinde'],
+  plugins: [
+    { src: '~/plugins/toast.client.js', mode: 'client' }
+  ],
 })
