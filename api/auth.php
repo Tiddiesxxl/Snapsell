@@ -1,4 +1,14 @@
 <?php
+header('Access-Control-Allow-Origin: http://localhost:3000'); // Match your frontend
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS'); // Include any other HTTP methods you use
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Credentials: true');
+
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 date_default_timezone_set('Africa/Nairobi');
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -33,16 +43,8 @@ register_shutdown_function(function() {
         ]);
     }
 });
-header('Access-Control-Allow-Origin: http://localhost:3000'); // More secure than *
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Access-Control-Allow-Headers, Content-Type, Access-Control-Allow-Methods, Authorization, X-Requested-With');
-header('Access-Control-Allow-Credentials: true');
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+
 
 // Database connection
 $db_host = 'localhost';
@@ -85,14 +87,14 @@ function sendVerificationEmail($email, $code) {
     
     try {
         $mail->isSMTP();
-        $mail->Host = 'smtp.mailersend.net'; // Update with your SMTP host
+        $mail->Host = 'smtp-relay.brevo.com'; // Update with your SMTP host
         $mail->SMTPAuth = true;
-        $mail->Username = 'MS_2iQSzM@trial-3z0vklo1je1g7qrx.mlsender.net'; // Update with your email
-        $mail->Password = 'pabrg5Q0wnhaNEY3'; // Use app password for Gmail
+        $mail->Username = '802019002@smtp-brevo.com'; // Update with your email
+        $mail->Password = 'MWCzwmIrqJYQLaU6'; // Use app password for Gmail
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = 587;
 
-        $mail->setFrom('MS_2iQSzM@trial-3z0vklo1je1g7qrx.mlsender.net', 'SnapSell');
+        $mail->setFrom('ayub@ayubxxl.site', 'SnapSell');
         $mail->addAddress($email);
 
         $mail->isHTML(true);
