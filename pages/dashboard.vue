@@ -1,19 +1,24 @@
 <template>
     <div>
-hello
+        <sidebar/>
     </div>
 </template>
 
 <script>
-export default {
-    setup () {
-        
-
-        return {}
-    }
-}
+import {defineComponent} from 'vue';
+import sidebar from '../components/sidebar.vue';
+ 
+export default defineComponent({
+  components: {
+    sidebar, // Register the Sidebar component
+  },
+  setup() {
+    // Any setup logic can go here
+    return {};
+  },
+});
 </script>
 
-<style lang="scss" scoped>
+<style  scoped>
 
 </style>

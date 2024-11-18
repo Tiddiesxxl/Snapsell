@@ -18,8 +18,8 @@ export default defineNuxtConfig({
   },
 },
 
-  modules: ['@nuxtjs/kinde'],
+  modules: ['@nuxtjs/kinde', '@vesp/nuxt-fontawesome'],
   plugins: [
-    { src: '~/plugins/toast.client.js', mode: 'client' }
+    { src: '~/plugins/toast.client.js', mode: 'client' },{src: '~/plugins/fontawesome.js'},
   ],
 })
