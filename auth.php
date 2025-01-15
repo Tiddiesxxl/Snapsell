@@ -1,230 +1,330 @@
 <?php
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// CORS headers
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: http://localhost:3000'); // Match your frontend
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS'); // Include any other HTTP methods you use
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Credentials: true');
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
-    exit();
+    exit;
+}
+date_default_timezone_set('Africa/Nairobi');
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'vendor/autoload.php';
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+function errorHandler($errno, $errstr, $errfile, $errline) {
+    http_response_code(500);
+    echo json_encode([
+        'error' => true,
+        'type' => 'PHP Error',
+        'message' => $errstr,
+        'file' => basename($errfile),
+        'line' => $errline
+    ]);
+    exit;
+}
+set_error_handler("errorHandler");
+
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error !== NULL && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        http_response_code(500);
+        echo json_encode([
+            'error' => true,
+            'type' => 'Fatal Error',
+            'message' => $error['message'],
+            'file' => basename($error['file']),
+            'line' => $error['line']
+        ]);
+    }
+});
+
+
+
+// Database connection
+$db_host = 'localhost';
+$db_user = 'root';
+$db_pass = '';
+$db_name = 'snapsell';
+
+$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+if ($conn->connect_error) {
+    http_response_code(500);
+    echo json_encode([
+        'error' => true,
+        'type' => 'Database Error',
+        'message' => 'Connection Failed: ' . $conn->connect_error
+    ]);
+    exit;
 }
 
-try {
-    require_once 'db_connect.php';
-    require_once 'email_config.php';
+// Get request data
+$data = json_decode(file_get_contents("php://input"));
+$action = isset($_GET['action']) ? $_GET['action'] : '';
 
-    session_start();
+switch($action) {
+    case 'signup':
+        handleSignup($conn, $data);
+        break;
+    case 'login':
+        handleLogin($conn, $data);
+        break;
+    case 'verify':
+        verifyCode($conn, $data);
+        break;
+    case 'verify-session':  // Add this case
+        verifySession($conn);
+        break;
+    case 'logout':  // Add this case
+        handleLogout($conn);
+        break;
+    default:
+        echo json_encode(['error' => 'Invalid action']);
+}
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // Log incoming request data
-        error_log('Incoming request: ' . file_get_contents('php://input'));
-        
-        $data = json_decode(file_get_contents('php://input'), true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception('Invalid JSON data: ' . json_last_error_msg());
-        }
+function sendVerificationEmail($email, $code) {
+    $mail = new PHPMailer(true);
+    
+    try {
+        $mail->isSMTP();
+        $mail->Host = 'smtp-relay.brevo.com'; // Update with your SMTP host
+        $mail->SMTPAuth = true;
+        $mail->Username = '802019002@smtp-brevo.com'; // Update with your email
+        $mail->Password = 'MWCzwmIrqJYQLaU6'; // Use app password for Gmail
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
 
-        $action = isset($_GET['action']) ? $_GET['action'] : '';
-        
-        // Log the action
-        error_log('Action: ' . $action);
+        $mail->setFrom('ayub@ayubxxl.site', 'SnapSell');
+        $mail->addAddress($email);
 
-        switch($action) {
-            case 'signup':
-                handleSignup($conn, $data);
-                break;
-            case 'verify_signup':
-                verifySignupCode($conn, $data);
-                break;
-            case 'login':
-                handleLogin($conn, $data);
-                break;
-            case 'verify_login':
-                verifyLoginCode($conn, $data);
-                break;
-            default:
-                throw new Exception('Invalid action specified');
-        }
-    } else {
-        throw new Exception('Invalid request method');
+        $mail->isHTML(true);
+        $mail->Subject = 'Your SnapSell Verification Code';
+        $mail->Body = "Your verification code is: <b>$code</b>";
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        return false;
     }
-} catch (Exception $e) {
-    error_log('Error in auth.php: ' . $e->getMessage());
-    echo json_encode([
-        'success' => false,
-        'error' => 'Server error occurred: ' . $e->getMessage()
-    ]);
 }
 
 function handleSignup($conn, $data) {
-    try {
-        if (!isset($data['name']) || !isset($data['email']) || !isset($data['password'])) {
-            throw new Exception('Missing required fields');
-        }
+    if(!isset($data->name) || !isset($data->email) || !isset($data->password)) {
+        http_response_code(400);
+        echo json_encode([
+            'error' => true,
+            'type' => 'Validation Error',
+            'message' => 'Missing required fields'
+        ]);
+        return;
+    }
 
-        $name = trim($data['name']);
-        $email = trim($data['email']);
-        $password = $data['password'];
+    // Sanitize input
+    $name = $conn->real_escape_string($data->name);
+    $email = $conn->real_escape_string($data->email);
+    $password = password_hash($data->password, PASSWORD_DEFAULT);
 
-        // Validate email
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception('Invalid email format');
-        }
+    // Check if email already exists
+    $check_query = "SELECT id FROM users WHERE email = '$email'";
+    $result = $conn->query($check_query);
+    
+    if($result->num_rows > 0) {
+        echo json_encode(['error' => 'Email already exists']);
+        return;
+    }
 
-        // Validate name length
-        if (strlen($name) < 2) {
-            throw new Exception('Name is too short');
-        }
-
-        $password = password_hash($password, PASSWORD_DEFAULT);
-        
-        // Check if email already exists
-        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
-        if (!$stmt) {
-            throw new Exception('Database prepare error: ' . $conn->error);
-        }
-
-        $stmt->bind_param("s", $email);
-        if (!$stmt->execute()) {
-            throw new Exception('Database execute error: ' . $stmt->error);
-        }
-
-        $result = $stmt->get_result();
-        
-        if ($result->num_rows > 0) {
-            echo json_encode(['success' => false, 'error' => 'Email already exists']);
-            return;
-        }
-
-        // Generate verification code
-        $verificationCode = sprintf("%06d", mt_rand(100000, 999999));
-        $_SESSION['verification_code'] = $verificationCode;
-        $_SESSION['temp_user_data'] = [
-            'name' => $name,
-            'email' => $email,
-            'password' => $password
-        ];
-
-        // Send verification email
-        if (sendVerificationEmail($email, $verificationCode)) {
-            echo json_encode(['success' => true, 'message' => 'Verification code sent']);
-        } else {
-            throw new Exception('Failed to send verification email');
-        }
-
-    } catch (Exception $e) {
-        error_log('Error in handleSignup: ' . $e->getMessage());
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    // Insert new user
+    $query = "INSERT INTO users (name, email, password_hash) VALUES ('$name', '$email', '$password')";
+    
+    if($conn->query($query)) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'User registered successfully'
+        ]);
+    } else {
+        echo json_encode([
+            'error' => 'Registration failed: ' . $conn->error
+        ]);
     }
 }
 
 function handleLogin($conn, $data) {
-    try {
-        if (!isset($data['name']) || !isset($data['password'])) {
-            throw new Exception('Missing required fields');
-        }
+    if(!isset($data->name) || !isset($data->password)) {
+        http_response_code(400);
+        echo json_encode([
+            'error' => true,
+            'type' => 'Validation Error',
+            'message' => 'Missing required fields'
+        ]);
+        return;
+    }
 
-        $name = trim($data['name']);
-        $password = $data['password'];
-        
-        $stmt = $conn->prepare("SELECT id, email, password FROM users WHERE name = ?");
-        if (!$stmt) {
-            throw new Exception('Database prepare error: ' . $conn->error);
-        }
+    // Sanitize input
+    $name = $conn->real_escape_string($data->name);
+    
+    // Use prepared statement
+    $query = "SELECT id, name, email, password_hash FROM users WHERE name = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("s", $name);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-        $stmt->bind_param("s", $name);
-        if (!$stmt->execute()) {
-            throw new Exception('Database execute error: ' . $stmt->error);
-        }
-
-        $result = $stmt->get_result();
-        
-        if ($result->num_rows === 1) {
-            $user = $result->fetch_assoc();
-            if (password_verify($password, $user['password'])) {
-                // Generate verification code
-                $verificationCode = sprintf("%06d", mt_rand(100000, 999999));
-                $_SESSION['login_verification_code'] = $verificationCode;
-                $_SESSION['temp_user_id'] = $user['id'];
-
-                // Send verification email
-                if (sendVerificationEmail($user['email'], $verificationCode)) {
-                    echo json_encode(['success' => true, 'message' => 'Verification code sent']);
-                } else {
-                    throw new Exception('Failed to send verification email');
-                }
+    if($result->num_rows > 0) {
+        $user = $result->fetch_assoc();
+        if(password_verify($data->password, $user['password_hash'])) {
+            // Generate verification code
+            $verificationCode = sprintf("%06d", random_int(0, 999999));
+            
+            // Store verification code in database
+            $expires = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+            $userId = $user['id'];
+            
+            $storeCode = $conn->prepare("INSERT INTO verification_codes (user_id, code, expires_at) VALUES (?, ?, ?)");
+            $storeCode->bind_param("iss", $userId, $verificationCode, $expires);
+            
+            if($storeCode->execute() && sendVerificationEmail($user['email'], $verificationCode)) {
+                echo json_encode([
+                    'requiresVerification' => true,
+                    'message' => 'Verification code sent to your email',
+                    'userId' => $user['id']
+                ]);
             } else {
-                echo json_encode(['success' => false, 'error' => 'Invalid credentials']);
+                http_response_code(500);
+                echo json_encode(['error' => 'Failed to send verification code']);
             }
         } else {
-            echo json_encode(['success' => false, 'error' => 'User not found']);
-        }
-
-    } catch (Exception $e) {
-        error_log('Error in handleLogin: ' . $e->getMessage());
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-    }
-}
-
-function verifySignupCode($conn, $data) {
-    $inputCode = $data['code'];
-    
-    if (!isset($_SESSION['verification_code']) || !isset($_SESSION['temp_user_data'])) {
-        echo json_encode(['success' => false, 'error' => 'Verification session expired']);
-        return;
-    }
-
-    if ($inputCode === $_SESSION['verification_code']) {
-        $userData = $_SESSION['temp_user_data'];
-        
-        // Insert user into database
-        $stmt = $conn->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $userData['name'], $userData['email'], $userData['password']);
-        
-        if ($stmt->execute()) {
-            // Clear session data
-            unset($_SESSION['verification_code']);
-            unset($_SESSION['temp_user_data']);
-            
-            echo json_encode(['success' => true, 'message' => 'Registration successful']);
-        } else {
-            echo json_encode(['success' => false, 'error' => 'Database error']);
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid password']);
         }
     } else {
-        echo json_encode(['success' => false, 'error' => 'Invalid verification code']);
+        http_response_code(404);
+        echo json_encode(['error' => 'User not found']);
     }
+    
+    $stmt->close();
 }
 
-function verifyLoginCode($conn, $data) {
-    $inputCode = $data['code'];
-    
-    if (!isset($_SESSION['login_verification_code']) || !isset($_SESSION['temp_user_id'])) {
-        echo json_encode(['success' => false, 'error' => 'Verification session expired']);
+// Add new verification endpoint
+function verifyCode($conn, $data) {
+    if(!isset($data->userId) || !isset($data->code)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Missing required fields']);
         return;
     }
 
-    if ($inputCode === $_SESSION['login_verification_code']) {
-        $userId = $_SESSION['temp_user_id'];
+    $stmt = $conn->prepare("SELECT * FROM verification_codes 
+                           WHERE user_id = ? AND code = ? AND expires_at > NOW() 
+                           AND used = 0 ORDER BY created_at DESC LIMIT 1");
+    $stmt->bind_param("is", $data->userId, $data->code);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if($result->num_rows > 0) {
+        // Mark code as used
+        $updateStmt = $conn->prepare("UPDATE verification_codes SET used = 1 WHERE user_id = ? AND code = ?");
+        $updateStmt->bind_param("is", $data->userId, $data->code);
+        $updateStmt->execute();
+
+        // Generate session token
+        $token = bin2hex(random_bytes(32));
+        $expires = date('Y-m-d H:i:s', strtotime('+24 hours'));
         
-        // Generate JWT token or session token here
-        $token = bin2hex(random_bytes(32)); // Simple token generation, consider using JWT
+        // Get client information
+        $ip_address = $_SERVER['REMOTE_ADDR'];
+        $user_agent = $_SERVER['HTTP_USER_AGENT'];
         
-        // Clear session data
-        unset($_SESSION['login_verification_code']);
-        unset($_SESSION['temp_user_id']);
+        $sessionStmt = $conn->prepare("INSERT INTO user_sessions (user_id, session_token, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)");
+        $sessionStmt->bind_param("issss", $data->userId, $token, $expires, $ip_address, $user_agent);
         
+        if($sessionStmt->execute()) {
+            // Get user details
+            $userStmt = $conn->prepare("SELECT id, name, email FROM users WHERE id = ?");
+            $userStmt->bind_param("i", $data->userId);
+            $userStmt->execute();
+            $user = $userStmt->get_result()->fetch_assoc();
+
+            echo json_encode([
+                'success' => true,
+                'token' => $token,
+                'user' => [
+                    'id' => $user['id'],
+                    'name' => $user['name'],
+                    'email' => $user['email']
+                ]
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to create session']);
+        }
+    } else {
+        http_response_code(401);
+        echo json_encode(['error' => 'Invalid or expired verification code']);
+    }
+}
+
+function verifySession($conn) {
+    $headers = getallheaders();
+    $auth_header = isset($headers['Authorization']) ? $headers['Authorization'] : '';
+    
+    if (!preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
+        http_response_code(401);
+        echo json_encode(['valid' => false, 'error' => 'No token provided']);
+        return;
+    }
+
+    $token = $matches[1];
+    
+    $stmt = $conn->prepare("
+        SELECT us.*, u.name, u.email 
+        FROM user_sessions us
+        JOIN users u ON us.user_id = u.id
+        WHERE us.session_token = ? 
+        AND us.expires_at > NOW()
+    ");
+    
+    $stmt->bind_param("s", $token);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $session = $result->fetch_assoc();
         echo json_encode([
-            'success' => true, 
-            'message' => 'Login successful',
-            'token' => $token
+            'valid' => true,
+            'user' => [
+                'id' => $session['user_id'],
+                'name' => $session['name'],
+                'email' => $session['email']
+            ]
         ]);
     } else {
-        echo json_encode(['success' => false, 'error' => 'Invalid verification code']);
+        http_response_code(401);
+        echo json_encode(['valid' => false, 'error' => 'Invalid or expired session']);
     }
-} 
+}
+
+function handleLogout($conn) {
+    $headers = getallheaders();
+    $auth_header = isset($headers['Authorization']) ? $headers['Authorization'] : '';
+    
+    if (preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
+        $token = $matches[1];
+        
+        $stmt = $conn->prepare("DELETE FROM user_sessions WHERE session_token = ?");
+        $stmt->bind_param("s", $token);
+        $stmt->execute();
+        
+        echo json_encode(['success' => true, 'message' => 'Logged out successfully']);
+    } else {
+        http_response_code(400);
+        echo json_encode(['error' => 'No token provided']);
+    }
+}
+
+$conn->close();
+?>

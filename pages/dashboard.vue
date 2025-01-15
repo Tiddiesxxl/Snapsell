@@ -4,6 +4,12 @@
     </div>
 </template>
 
+<script setup>
+definePageMeta({
+  middleware: ['auth']
+});
+</script>
+
 <script>
 import {defineComponent} from 'vue';
 import sidebar from '../components/sidebar.vue';

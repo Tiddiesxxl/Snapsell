@@ -154,7 +154,7 @@
   </template>
   
   <script setup>
-  import { ref, watch, computed } from 'vue';
+  import { ref, watch, computed, onMounted } from 'vue';
   import { useRoute } from 'vue-router';
   import { useToast } from 'vue-toastification'
 
@@ -311,6 +311,7 @@
   const verifyCode = async () => {
     try {
         const userId = localStorage.getItem('temp_user_id');
+        
         const response = await fetch('http://localhost/snapsell/auth.php?action=verify', {
             method: 'POST',
             headers: {
@@ -319,8 +320,7 @@
             body: JSON.stringify({
                 userId: userId,
                 code: verificationCode.value
-            }),
-            credentials:'include'
+            })
         });
         
         const data = await response.json();
@@ -329,11 +329,13 @@
             localStorage.setItem('token', data.token);
             toast.success('Verification successful!');
             showVerificationInput.value = false;
-            navigateTo('/dashboard');
+            // Force navigation using window.location
+            window.location.href = '/dashboard';
         } else {
             toast.error(data.error || 'Verification failed');
         }
     } catch (error) {
+        console.error('Verification error:', error);
         toast.error('Network error occurred');
     }
   };
@@ -341,6 +343,14 @@
   const setVerificationActive = (value) => {
     isVerificationActive.value = value;
   };
+
+  onMounted(() => {
+    // If user is already logged in, redirect to dashboard
+    const token = localStorage.getItem('token');
+    if (token) {
+      navigateTo('/dashboard');
+    }
+  });
   </script>
   
   <style scoped>
