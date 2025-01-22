@@ -84,6 +84,15 @@ switch($action) {
     case 'logout':  // Add this case
         handleLogout($conn);
         break;
+    case 'send-otp':
+        sendOtp($conn,$data);
+        break;
+    case 'verify-otp':
+        verifyOtp($conn,$data);
+        break;       
+   case 'reset-password':
+        resetPassword($conn, $data);
+        break;
     default:
         echo json_encode(['error' => 'Invalid action']);
 }
@@ -155,7 +164,7 @@ function handleSignup($conn, $data) {
 }
 
 function handleLogin($conn, $data) {
-    if(!isset($data->name) || !isset($data->password)) {
+    if(!isset($data->email) || !isset($data->password)) {
         http_response_code(400);
         echo json_encode([
             'error' => true,
@@ -165,70 +174,249 @@ function handleLogin($conn, $data) {
         return;
     }
 
-    // Sanitize input
-    $name = $conn->real_escape_string($data->name);
-    
-    // Use prepared statement
-    $query = "SELECT id, name, email, password_hash FROM users WHERE name = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("s", $name);
+    try {
+        // Sanitize input
+        $email = $conn->real_escape_string($data->email);
+        
+        // Use prepared statement with email instead of name
+        $query = "SELECT id, name, email, password_hash FROM users WHERE email = ?";
+        $stmt = $conn->prepare($query);
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error);
+        }
+
+        $stmt->bind_param("s", $email);
+        if (!$stmt->execute()) {
+            throw new Exception("Execute failed: " . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+
+        if($result->num_rows > 0) {
+            $user = $result->fetch_assoc();
+            if(password_verify($data->password, $user['password_hash'])) {
+                // Generate verification code
+                $verificationCode = sprintf("%06d", random_int(0, 999999));
+                
+                // Store verification code in database
+                $expires = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+                $userId = $user['id'];
+                
+                $storeCode = $conn->prepare("INSERT INTO verification_codes (user_id, code, expires_at) VALUES (?, ?, ?)");
+                if (!$storeCode) {
+                    throw new Exception("Prepare store code failed: " . $conn->error);
+                }
+
+                $storeCode->bind_param("iss", $userId, $verificationCode, $expires);
+                
+                if($storeCode->execute() && sendVerificationEmail($user['email'], $verificationCode)) {
+                    echo json_encode([
+                        'requiresVerification' => true,
+                        'message' => 'Verification code sent to your email',
+                        'userId' => $user['id']
+                    ]);
+                    return;
+                } else {
+                    throw new Exception("Failed to store code or send email");
+                }
+            } else {
+                http_response_code(401);
+                echo json_encode(['error' => 'Invalid password']);
+            }
+        } else {
+            http_response_code(404);
+            echo json_encode(['error' => 'User not found']);
+        }
+        
+        $stmt->close();
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'error' => true,
+            'type' => 'Server Error',
+            'message' => 'An error occurred during login',
+            'debug_message' => $e->getMessage() // Remove this in production
+        ]);
+    }
+}
+
+function sendOtp($conn, $data) {
+    if (!isset($data->email)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Email is required']);
+        return;
+    }
+
+    $email = $conn->real_escape_string($data->email);
+
+    // Check if email exists
+    $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+    $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
 
-    if($result->num_rows > 0) {
+    if ($result->num_rows > 0) {
         $user = $result->fetch_assoc();
-        if(password_verify($data->password, $user['password_hash'])) {
-            // Generate verification code
-            $verificationCode = sprintf("%06d", random_int(0, 999999));
-            
-            // Store verification code in database
-            $expires = date('Y-m-d H:i:s', strtotime('+5 minutes'));
-            $userId = $user['id'];
-            
-            $storeCode = $conn->prepare("INSERT INTO verification_codes (user_id, code, expires_at) VALUES (?, ?, ?)");
-            $storeCode->bind_param("iss", $userId, $verificationCode, $expires);
-            
-            if($storeCode->execute() && sendVerificationEmail($user['email'], $verificationCode)) {
-                echo json_encode([
-                    'requiresVerification' => true,
-                    'message' => 'Verification code sent to your email',
-                    'userId' => $user['id']
-                ]);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => 'Failed to send verification code']);
-            }
+        $verificationCode = sprintf("%06d", random_int(0, 999999));
+        $expires = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+
+        // Store verification code in database
+        $storeCode = $conn->prepare("INSERT INTO verification_codes (user_id, code, expires_at) VALUES (?, ?, ?)");
+        $storeCode->bind_param("iss", $user['id'], $verificationCode, $expires);
+
+        if ($storeCode->execute() && sendVerificationEmail($email, $verificationCode)) {
+            echo json_encode(['success' => true, 'message' => 'Verification code sent']);
         } else {
-            http_response_code(401);
-            echo json_encode(['error' => 'Invalid password']);
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to send verification code']);
         }
     } else {
         http_response_code(404);
-        echo json_encode(['error' => 'User not found']);
+        echo json_encode(['error' => 'Email not found']);
     }
-    
-    $stmt->close();
 }
 
-// Add new verification endpoint
-function verifyCode($conn, $data) {
-    if(!isset($data->userId) || !isset($data->code)) {
+function verifyOtp($conn, $data) {
+    if (!isset($data->email) || !isset($data->code) || empty($data->email) || empty($data->code)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Email and verification code are required']);
+        return;
+    }
+
+    $email = $conn->real_escape_string($data->email);
+    $code = $conn->real_escape_string($data->code);
+
+    // First get the user ID from email
+    $userStmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+    $userStmt->bind_param("s", $email);
+    $userStmt->execute();
+    $userResult = $userStmt->get_result();
+
+    if ($userResult->num_rows === 0) {
+        http_response_code(404);
+        echo json_encode(['error' => 'User not found']);
+        return;
+    }
+
+    $user = $userResult->fetch_assoc();
+    $userId = $user['id'];
+
+    // Verify the code
+    $stmt = $conn->prepare("
+        SELECT * FROM verification_codes 
+        WHERE user_id = ? 
+        AND code = ? 
+        AND expires_at > NOW() 
+        AND used = 0 
+        ORDER BY created_at DESC 
+        LIMIT 1
+    ");
+    $stmt->bind_param("is", $userId, $code);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        // Mark code as used
+        $updateStmt = $conn->prepare("UPDATE verification_codes SET used = 1 WHERE user_id = ? AND code = ?");
+        $updateStmt->bind_param("is", $userId, $code);
+        $updateStmt->execute();
+
+        // Generate session token for login flow
+        if (!isset($data->isPasswordReset) || !$data->isPasswordReset) {
+            $token = bin2hex(random_bytes(32));
+            $expires = date('Y-m-d H:i:s', strtotime('+24 hours'));
+            
+            $sessionStmt = $conn->prepare("INSERT INTO user_sessions (user_id, session_token, expires_at) VALUES (?, ?, ?)");
+            $sessionStmt->bind_param("iss", $userId, $token, $expires);
+            
+            if ($sessionStmt->execute()) {
+                echo json_encode([
+                    'success' => true,
+                    'token' => $token,
+                    'message' => 'Code verified successfully'
+                ]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Failed to create session']);
+            }
+        } else {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Code verified successfully'
+            ]);
+        }
+    } else {
+        http_response_code(401);
+        echo json_encode(['error' => 'Invalid or expired verification code']);
+    }
+}
+
+function resetPassword($conn, $data) {
+    if (!isset($data->email) || !isset($data->newPassword)) {
         http_response_code(400);
         echo json_encode(['error' => 'Missing required fields']);
         return;
     }
 
+    $email = $conn->real_escape_string($data->email);
+    $newPassword = password_hash($data->newPassword, PASSWORD_DEFAULT);
+
+    // Update the user's password
+    $updatePasswordStmt = $conn->prepare("UPDATE users SET password_hash = ? WHERE email = ?");
+    $updatePasswordStmt->bind_param("ss", $newPassword, $email);
+    
+    if ($updatePasswordStmt->execute()) {
+        // Mark all verification codes for this user as used
+        $markCodesUsed = $conn->prepare("
+            UPDATE verification_codes vc 
+            JOIN users u ON vc.user_id = u.id 
+            SET vc.used = 1 
+            WHERE u.email = ?
+        ");
+        $markCodesUsed->bind_param("s", $email);
+        $markCodesUsed->execute();
+        
+        echo json_encode(['success' => true, 'message' => 'Password reset successful']);
+    } else {
+        http_response_code(500);
+        echo json_encode(['error' => 'Failed to reset password']);
+    }
+}
+
+// Add new verification endpoint
+function verifyCode($conn, $data) {
+    if(!isset($data->email) || !isset($data->code)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Missing required fields']);
+        return;
+    }
+
+    // First get the user ID from email
+    $userStmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+    $userStmt->bind_param("s", $data->email);
+    $userStmt->execute();
+    $userResult = $userStmt->get_result();
+
+    if($userResult->num_rows === 0) {
+        http_response_code(404);
+        echo json_encode(['error' => 'User not found']);
+        return;
+    }
+
+    $user = $userResult->fetch_assoc();
+    $userId = $user['id'];
+
     $stmt = $conn->prepare("SELECT * FROM verification_codes 
                            WHERE user_id = ? AND code = ? AND expires_at > NOW() 
                            AND used = 0 ORDER BY created_at DESC LIMIT 1");
-    $stmt->bind_param("is", $data->userId, $data->code);
+    $stmt->bind_param("is", $userId, $data->code);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if($result->num_rows > 0) {
         // Mark code as used
         $updateStmt = $conn->prepare("UPDATE verification_codes SET used = 1 WHERE user_id = ? AND code = ?");
-        $updateStmt->bind_param("is", $data->userId, $data->code);
+        $updateStmt->bind_param("is", $userId, $data->code);
         $updateStmt->execute();
 
         // Generate session token
@@ -240,12 +428,12 @@ function verifyCode($conn, $data) {
         $user_agent = $_SERVER['HTTP_USER_AGENT'];
         
         $sessionStmt = $conn->prepare("INSERT INTO user_sessions (user_id, session_token, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)");
-        $sessionStmt->bind_param("issss", $data->userId, $token, $expires, $ip_address, $user_agent);
+        $sessionStmt->bind_param("issss", $userId, $token, $expires, $ip_address, $user_agent);
         
         if($sessionStmt->execute()) {
             // Get user details
             $userStmt = $conn->prepare("SELECT id, name, email FROM users WHERE id = ?");
-            $userStmt->bind_param("i", $data->userId);
+            $userStmt->bind_param("i", $userId);
             $userStmt->execute();
             $user = $userStmt->get_result()->fetch_assoc();
 

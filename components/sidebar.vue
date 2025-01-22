@@ -19,13 +19,6 @@
       </li>
       <li>
         <a href="#">
-          <Fa icon="user" />
-          <span class="links_name">User</span>
-        </a>
-        <span class="tooltip">User</span>
-      </li>
-      <li>
-        <a href="#">
           <Fa icon="comments" />
           <span class="links_name">Messages</span>
         </a>
@@ -48,16 +41,16 @@
       <li>
         <a href="#">
           <Fa icon="shopping-cart" />
-          <span class="links_name">Order</span>
+          <span class="links_name">Sales</span>
         </a>
-        <span class="tooltip">Order</span>
+        <span class="tooltip">Sales</span>
       </li>
       <li>
         <a href="#">
           <Fa icon="heart" />
-          <span class="links_name">Saved</span>
+          <span class="links_name">Favourites</span>
         </a>
-        <span class="tooltip">Saved</span>
+        <span class="tooltip">Favourites</span>
       </li>
       <li>
         <a href="#">
