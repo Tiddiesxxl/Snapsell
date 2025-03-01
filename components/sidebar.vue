@@ -10,69 +10,24 @@
       />
     </div>
     <ul class="nav-list">
-      <li>
-        <a href="#">
-          <Fa icon="tachometer-alt" />
-          <span class="links_name">Dashboard</span>
+      <li v-for="item in menuItems" :key="item.id" @click="navigateMenu(item.id)">
+        <a href="#" :class="{ active: activeMenu === item.id }">
+          <Fa :icon="item.icon" />
+          <span class="links_name">{{ item.name }}</span>
         </a>
-        <span class="tooltip">Dashboard</span>
-      </li>
-      <li>
-        <a href="#">
-          <Fa icon="comments" />
-          <span class="links_name">Messages</span>
-        </a>
-        <span class="tooltip">Messages</span>
-      </li>
-      <li>
-        <a href="#">
-          <Fa icon="chart-line" />
-          <span class="links_name">Analytics</span>
-        </a>
-        <span class="tooltip">Analytics</span>
-      </li>
-      <li>
-        <a href="#">
-          <Fa icon="folder" />
-          <span class="links_name">File Manager</span>
-        </a>
-        <span class="tooltip">Files</span>
-      </li>
-      <li>
-        <a href="#">
-          <Fa icon="shopping-cart" />
-          <span class="links_name">Sales</span>
-        </a>
-        <span class="tooltip">Sales</span>
-      </li>
-      <li>
-        <a href="#">
-          <Fa icon="heart" />
-          <span class="links_name">Favourites</span>
-        </a>
-        <span class="tooltip">Favourites</span>
-      </li>
-      <li>
-        <a href="#">
-          <Fa icon="cog" />
-          <span class="links_name">Setting</span>
-        </a>
-        <span class="tooltip">Setting</span>
+        <span class="tooltip">{{ item.name }}</span>
       </li>
       <li class="profile">
-        <img src="https://i.pinimg.com/736x/1e/99/60/1e9960fc0554c6ab55869f2e7734611c.jpg" alt="profileImg" />
+        <img :src="userImage" alt="profileImg" />
         <div class="profile-details">
           <div class="name_job">
-            <div class="name">Test</div>
+            <div class="name">{{ userName }}</div>
           </div>
         </div>
         <Fa icon="sign-out-alt" id="log_out" class="logout-btn" @click="handleLogout" />
       </li>
     </ul>
   </div>
-  <section class="home-section">
-    <div class="text">Dashboard</div>
-  </section>
 </template>
   
 <script setup>
@@ -81,11 +36,21 @@ import { useToast } from 'vue-toastification';
 
 const toast = useToast();
 const isOpen = ref(false);
-const userName = ref('');
-const userImage = ref('');
+const userName = ref('User');
+const userImage = ref('https://i.pinimg.com/736x/1e/99/60/1e9960fc0554c6ab55869f2e7734611c.jpg');
+const activeMenu = ref('dashboard');
+
+const emit = defineEmits(['menu-change']);
 
 const toggleSidebar = () => {
   isOpen.value = !isOpen.value;
+};
+
+const navigateMenu = (menuId) => {
+  if (activeMenu.value === menuId) return; // Prevent unnecessary updates
+  
+  activeMenu.value = menuId;
+  emit('menu-change', menuId);
 };
 
 // Add logout functionality
@@ -93,7 +58,7 @@ const handleLogout = async () => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
-      navigateTo('/login');
+      window.location.href = '/login';
       return;
     }
 
@@ -108,6 +73,7 @@ const handleLogout = async () => {
 
     if (data.success) {
       localStorage.removeItem('token');
+      localStorage.removeItem('userData');
       toast.success('Logged out successfully');
       window.location.href = '/login';
     } else {
@@ -120,30 +86,46 @@ const handleLogout = async () => {
 };
 
 // Get user data on component mount
-onMounted(async () => {
-  const token = localStorage.getItem('token');
-  if (token) {
+onMounted(() => {
+  // Get user data from localStorage
+  const userDataStr = localStorage.getItem('userData');
+  if (userDataStr) {
     try {
-      const response = await fetch('http://localhost/snapsell/auth.php?action=verify-session', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-      if (data.valid && data.user) {
-        userName.value = data.user.name;
-        // If you have user image in the response
-        // userImage.value = data.user.image;
-      }
-    } catch (error) {
-      console.error('Failed to fetch user data:', error);
+      const userData = JSON.parse(userDataStr);
+      userName.value = userData.name || 'User';
+    } catch (e) {
+      console.error('Error parsing user data:', e);
     }
   }
+
+  // Check session activity every minute
+  const interval = setInterval(() => {
+    const lastActive = parseInt(localStorage.getItem('lastActive') || '0');
+    if (Date.now() - lastActive > 30 * 60 * 1000) { // 30 minutes inactivity
+      handleLogout();
+    }
+  }, 60000);
+
+  // Update activity timestamp on user interaction
+  window.addEventListener('click', () => {
+    localStorage.setItem('lastActive', Date.now().toString());
+  });
 });
+
+const menuItems = [
+  { id: 'dashboard', name: 'Dashboard', icon: 'tachometer-alt' },
+  { id: 'upload', name: 'Upload Photos', icon: 'cloud-upload-alt' },
+  { id: 'gallery', name: 'My Gallery', icon: 'images' },
+  { id: 'events', name: 'Event Management', icon: 'calendar-alt' },
+  { id: 'sales', name: 'Sales & Orders', icon: 'shopping-cart' },
+  { id: 'messages', name: 'Messages', icon: 'comments' },
+  { id: 'analytics', name: 'Analytics', icon: 'chart-line' },
+  { id: 'settings', name: 'Settings', icon: 'cog' }
+];
 </script>
   
-  <style scoped>
- @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap');
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap');
 
 * {
   margin: 0;
@@ -376,32 +358,6 @@ onMounted(async () => {
   color: #1d1b31;
 }
 
-.home-section {
-  position: fixed;
-  background: #E4E9F7;
-  min-height: 100vh;
-  height: 100vh;
-  top: 0;
-  left: 78px;
-  width: calc(100% - 78px);
-  transition: all 0.5s ease;
-  z-index: 2;
-  overflow-y: auto;
-}
-
-.sidebar.open ~ .home-section {
-  left: 250px;
-  width: calc(100% - 250px);
-}
-
-.home-section .text {
-  display: inline-block;
-  color: #11101d;
-  font-size: 25px;
-  font-weight: 500;
-  margin: 18px;
-}
-
 /* Media Queries for Responsiveness */
 @media (max-width: 768px) {
   .sidebar {
@@ -472,17 +428,6 @@ onMounted(async () => {
   .sidebar li {
     margin: 8px 0;
   }
-
-  .home-section {
-    left: 78px;
-    width: calc(100% - 78px);
-    overflow-y: auto;
-  }
-
-  .sidebar.open ~ .home-section {
-    left: 250px;
-    width: calc(100% - 250px);
-  }
 }
 
 @media (max-width: 420px) {
@@ -490,5 +435,4 @@ onMounted(async () => {
     display: none;
   }
 }
-
-  </style>
+</style>

@@ -285,6 +285,7 @@ function verifyOtp($conn, $data) {
 
     $email = $conn->real_escape_string($data->email);
     $code = $conn->real_escape_string($data->code);
+    $isPasswordReset = isset($data->isPasswordReset) ? $data->isPasswordReset : false;
 
     // First get the user ID from email
     $userStmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
@@ -321,8 +322,8 @@ function verifyOtp($conn, $data) {
         $updateStmt->bind_param("is", $userId, $code);
         $updateStmt->execute();
 
-        // Generate session token for login flow
-        if (!isset($data->isPasswordReset) || !$data->isPasswordReset) {
+        // If this is not a password reset, generate session token
+        if (!$isPasswordReset) {
             $token = bin2hex(random_bytes(32));
             $expires = date('Y-m-d H:i:s', strtotime('+24 hours'));
             
@@ -340,6 +341,7 @@ function verifyOtp($conn, $data) {
                 echo json_encode(['error' => 'Failed to create session']);
             }
         } else {
+            // For password reset flow
             echo json_encode([
                 'success' => true,
                 'message' => 'Code verified successfully'
@@ -457,7 +459,7 @@ function verifyCode($conn, $data) {
 }
 
 function verifySession($conn) {
-    $headers = getallheaders();
+    $headers = apache_request_headers();
     $auth_header = isset($headers['Authorization']) ? $headers['Authorization'] : '';
     
     if (!preg_match('/Bearer\s+(.*)$/i', $auth_header, $matches)) {
@@ -468,12 +470,17 @@ function verifySession($conn) {
 
     $token = $matches[1];
     
+    // Add token validation and cleanup
+    $stmt = $conn->prepare("DELETE FROM user_sessions WHERE expires_at < NOW()");
+    $stmt->execute();
+    
     $stmt = $conn->prepare("
-        SELECT us.*, u.name, u.email 
+        SELECT us.*, u.name, u.email, u.id as user_id
         FROM user_sessions us
         JOIN users u ON us.user_id = u.id
         WHERE us.session_token = ? 
         AND us.expires_at > NOW()
+        LIMIT 1
     ");
     
     $stmt->bind_param("s", $token);
@@ -482,6 +489,13 @@ function verifySession($conn) {
 
     if ($result->num_rows > 0) {
         $session = $result->fetch_assoc();
+        
+        // Update session expiry
+        $newExpiry = date('Y-m-d H:i:s', strtotime('+24 hours'));
+        $updateStmt = $conn->prepare("UPDATE user_sessions SET expires_at = ? WHERE session_token = ?");
+        $updateStmt->bind_param("ss", $newExpiry, $token);
+        $updateStmt->execute();
+        
         echo json_encode([
             'valid' => true,
             'user' => [

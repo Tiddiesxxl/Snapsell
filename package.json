@@ -14,8 +14,11 @@
     "@fortawesome/vue-fontawesome": "^3.0.8",
     "@nuxtjs/kinde": "^0.1.11",
     "@vesp/nuxt-fontawesome": "^1.1.0",
+    "@vite-pwa/nuxt": "^0.10.6",
+    "chart.js": "^4.4.8",
     "nuxt": "^3.13.2",
     "vue": "latest",
+    "vue-chartjs": "^5.3.2",
     "vue-router": "latest",
     "vue-toastification": "^2.0.0-rc.5"
   },

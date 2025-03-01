@@ -208,7 +208,33 @@
                   />
                   <label :class="{ active: confirmPassword }">Confirm Password</label>
                 </div>
-                <button type="submit" class="sign-btn" :disabled="!newPassword || newPassword !== confirmPassword">
+                
+                <!-- Add password requirements display -->
+                <div class="password-requirements">
+                  <p :class="{ valid: resetPasswordHasMinLength }">
+                    <i class="fas" :class="resetPasswordHasMinLength ? 'fa-check' : 'fa-times'"></i>
+                    8+ characters
+                  </p>
+                  <p :class="{ valid: resetPasswordHasUpperCase }">
+                    <i class="fas" :class="resetPasswordHasUpperCase ? 'fa-check' : 'fa-times'"></i>
+                    Uppercase
+                  </p>
+                  <p :class="{ valid: resetPasswordHasLowerCase }">
+                    <i class="fas" :class="resetPasswordHasLowerCase ? 'fa-check' : 'fa-times'"></i>
+                    Lowercase
+                  </p>
+                  <p :class="{ valid: resetPasswordHasNumber }">
+                    <i class="fas" :class="resetPasswordHasNumber ? 'fa-check' : 'fa-times'"></i>
+                    Number
+                  </p>
+                  <p :class="{ valid: resetPasswordHasSpecialChar }">
+                    <i class="fas" :class="resetPasswordHasSpecialChar ? 'fa-check' : 'fa-times'"></i>
+                    Special char
+                  </p>
+                </div>
+                
+                <button type="submit" class="sign-btn" 
+                        :disabled="!isResetPasswordValid || !newPassword || newPassword !== confirmPassword">
                   Reset Password
                 </button>
               </div>
@@ -412,23 +438,26 @@
         body: JSON.stringify({
           email: isPasswordReset.value ? forgotPasswordEmail.value : signInFields.value[0].value,
           code: verificationCode.value,
+          isPasswordReset: isPasswordReset.value
         }),
       });
       
       const data = await response.json();
       
       if (data.success) {
+        // Clear verification code regardless of outcome
+        verificationCode.value = '';
+        
         if (isPasswordReset.value) {
-          toast.success('Code verified! Please enter your new password.');
-          showVerificationInput.value = false;
           showResetPasswordForm.value = true;
-        } else {
-          toast.success('Email verified successfully!');
           showVerificationInput.value = false;
-          if (data.token) {
-            localStorage.setItem('token', data.token);
-            navigateTo('/dashboard');
+        } else if (data.token) {
+          localStorage.setItem('token', data.token);
+          if (data.user) {
+            localStorage.setItem('userData', JSON.stringify(data.user));
           }
+          toast.success('Email verified successfully!');
+          window.location.href = '/dashboard';
         }
       } else {
         toast.error(data.error || 'Invalid verification code');
@@ -530,8 +559,29 @@
     }
   };
 
+  // Add these computed properties for reset password validation
+  const resetPasswordHasMinLength = computed(() => newPassword.value.length >= 8);
+  const resetPasswordHasUpperCase = computed(() => /[A-Z]/.test(newPassword.value));
+  const resetPasswordHasLowerCase = computed(() => /[a-z]/.test(newPassword.value));
+  const resetPasswordHasNumber = computed(() => /\d/.test(newPassword.value));
+  const resetPasswordHasSpecialChar = computed(() => /[!@#$%^&*(),.?":{}|<>]/.test(newPassword.value));
+
+  const isResetPasswordValid = computed(() => 
+    resetPasswordHasMinLength.value && 
+    resetPasswordHasUpperCase.value && 
+    resetPasswordHasLowerCase.value && 
+    resetPasswordHasNumber.value && 
+    resetPasswordHasSpecialChar.value
+  );
+
+  // Update the handleResetPassword function
   const handleResetPassword = async () => {
     try {
+      if (!isResetPasswordValid.value) {
+        toast.error('Password must meet all security requirements');
+        return;
+      }
+
       if (newPassword.value !== confirmPassword.value) {
         toast.error('Passwords do not match');
         return;
@@ -555,10 +605,13 @@
         showResetPasswordForm.value = false;
         showForgotPasswordForm.value = false;
         isPasswordReset.value = false;
-        // Clear sensitive data
+        // Clear all sensitive data and form fields
         newPassword.value = '';
         confirmPassword.value = '';
         forgotPasswordEmail.value = '';
+        verificationCode.value = '';
+        // Return to login form
+        showVerificationInput.value = false;
       } else {
         toast.error(data.error || 'Failed to reset password');
       }

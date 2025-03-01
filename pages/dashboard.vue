@@ -1,13 +1,9 @@
 <template>
-    <div>
-        <sidebar/>
-    </div>
+  <DashboardLayout />
 </template>
 
 <script setup>
-definePageMeta({
-  middleware: ['auth']
-});
+import DashboardLayout from '~/components/dashboard/DashboardLayout.vue';
 </script>
 
 <script>
@@ -25,6 +21,20 @@ export default defineComponent({
 });
 </script>
 
-<style  scoped>
+<style scoped>
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+}
 
+.dashboard-content {
+  flex: 1;
+  padding: 20px;
+  margin-left: 78px;
+  transition: margin-left 0.5s ease;
+}
+
+.sidebar.open ~ .dashboard-content {
+  margin-left: 250px;
+}
 </style>
