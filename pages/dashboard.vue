@@ -21,6 +21,21 @@ export default defineComponent({
 });
 </script>
 
+<style>
+/* Global styles for the dashboard page */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+#__nuxt {
+  height: 100%;
+}
+</style>
+
 <style scoped>
 .dashboard-container {
   display: flex;

@@ -528,5 +528,68 @@ function handleLogout($conn) {
     }
 }
 
+function base64url_encode($data) {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+function base64url_decode($data) {
+    return base64_decode(strtr($data, '-_', '+/'));
+}
+
+function verifyToken() {
+    // Get headers
+    $headers = getallheaders();
+    $authHeader = isset($headers['Authorization']) ? $headers['Authorization'] : '';
+
+    // Check if token exists
+    if (!$authHeader || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+        return null;
+    }
+
+    $token = $matches[1];
+    $secret = "your_jwt_secret_key"; // In production, this should be in a secure configuration file
+
+    try {
+        // Split token into parts
+        $tokenParts = explode('.', $token);
+        if (count($tokenParts) != 3) {
+            return null;
+        }
+
+        // Decode token parts
+        $header = json_decode(base64url_decode($tokenParts[0]), true);
+        $payload = json_decode(base64url_decode($tokenParts[1]), true);
+
+        // Verify signature
+        $signature = $tokenParts[2];
+        $validSignature = base64url_encode(
+            hash_hmac('sha256', $tokenParts[0] . "." . $tokenParts[1], $secret, true)
+        );
+
+        if ($signature !== $validSignature) {
+            return null;
+        }
+
+        // Check if token is expired
+        if (isset($payload['exp']) && $payload['exp'] < time()) {
+            return null;
+        }
+
+        // Get user from database
+        global $conn;
+        $userId = $payload['user_id'];
+        $stmt = $conn->prepare("SELECT id, name, email, user_type FROM users WHERE id = ?");
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+
+        return $user;
+
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
 $conn->close();
 ?>

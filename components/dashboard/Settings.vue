@@ -18,7 +18,12 @@
         <h2>Profile Settings</h2>
         <div class="profile-header">
           <div class="avatar-section">
-            <img :src="profileData.avatar" alt="Profile" class="profile-avatar" />
+            <img 
+              :src="profileData.avatar || defaultAvatar" 
+              alt="Profile" 
+              class="profile-avatar"
+              @error="handleImageError" 
+            />
             <div class="avatar-overlay" @click="triggerAvatarUpload">
               <Fa icon="camera" />
               <span>Change Photo</span>
@@ -34,30 +39,39 @@
           <div class="profile-info">
             <h3>{{ profileData.name }}</h3>
             <p>{{ profileData.email }}</p>
-            <span class="membership-badge">{{ profileData.membershipType }}</span>
+            <span class="membership-badge">{{ profileData.user_type }}</span>
           </div>
         </div>
 
         <form @submit.prevent="saveProfileSettings" class="settings-form">
           <div class="form-group">
             <label>Display Name</label>
-            <input v-model="profileData.name" type="text" />
+            <input v-model="profileData.name" type="text" required />
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Email</label>
-              <input v-model="profileData.email" type="email" />
+              <input v-model="profileData.email" type="email" required />
             </div>
             <div class="form-group">
               <label>Phone</label>
-              <input v-model="profileData.phone" type="tel" />
+              <input 
+                v-model="profileData.phone" 
+                type="tel" 
+                @input="validatePhone"
+                pattern="[0-9]*"
+                maxlength="15"
+                placeholder="Enter phone number"
+              />
             </div>
           </div>
           <div class="form-group">
             <label>Bio</label>
             <textarea v-model="profileData.bio" rows="4"></textarea>
           </div>
-          <button type="submit" class="save-btn">Save Changes</button>
+          <button type="submit" class="save-btn" :disabled="isSaving">
+            {{ isSaving ? 'Saving...' : 'Save Changes' }}
+          </button>
         </form>
       </div>
 
@@ -185,12 +199,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
+import { useR2Storage } from '~/composables/useR2Storage';
 
 const toast = useToast();
 const avatarInput = ref(null);
 const activeSection = ref('profile');
+const isSaving = ref(false);
+const defaultAvatar = 'https://i.pinimg.com/736x/1e/99/60/1e9960fc0554c6ab55869f2e7734611c.jpg';
 
 const sections = [
   { id: 'profile', name: 'Profile', icon: 'user' },
@@ -201,12 +218,12 @@ const sections = [
 
 // Profile Data
 const profileData = ref({
-  name: 'John Doe',
-  email: 'john@example.com',
-  phone: '+1234567890',
+  name: '',
+  email: '',
+  phone: '',
   bio: '',
-  avatar: 'https://i.pravatar.cc/150',
-  membershipType: 'Pro Member'
+  avatar: '',
+  user_type: 'User'
 });
 
 // Security Settings
@@ -252,29 +269,129 @@ const payoutInfo = ref({
 });
 
 // Methods
+const { uploadToR2, isUploading } = useR2Storage();
+
 const triggerAvatarUpload = () => {
   avatarInput.value.click();
 };
 
 const handleAvatarChange = async (event) => {
   const file = event.target.files[0];
-  if (file) {
-    try {
-      // Handle avatar upload
-      toast.success('Profile photo updated successfully');
-    } catch (error) {
-      toast.error('Failed to update profile photo');
+  if (!file) return;
+
+  // Validate file
+  if (!file.type.startsWith('image/')) {
+    toast.error('Please upload an image file');
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    toast.error('Image size should be less than 5MB');
+    return;
+  }
+
+  try {
+    // Upload to R2
+    const fileUrl = await uploadToR2(file, 'profiles');
+    
+    // Update profile with new image URL
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost/snapsell/user.php?action=update_profile_image', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        profile_picture: fileUrl
+      })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      profileData.value.avatar = fileUrl;
+      toast.success('Profile image updated successfully');
+      
+      // Update localStorage user data
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+      userData.profile_picture = fileUrl;
+      localStorage.setItem('userData', JSON.stringify(userData));
+    } else {
+      toast.error(data.error || 'Failed to update profile image');
     }
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    toast.error('Failed to upload image');
+  }
+};
+
+const validatePhone = (event) => {
+  // Remove any non-numeric characters
+  const value = event.target.value;
+  profileData.value.phone = value.replace(/\D/g, '');
+  
+  // Optional: Format the phone number as you type
+  // This example formats as: XXX-XXX-XXXX
+  if (profileData.value.phone.length >= 10) {
+    const formatted = profileData.value.phone.replace(
+      /(\d{3})(\d{3})(\d{4})/,
+      '$1-$2-$3'
+    );
+    profileData.value.phone = formatted;
   }
 };
 
 const saveProfileSettings = async () => {
-  try {
-    // API call to save profile settings
-    toast.success('Profile settings saved successfully');
-  } catch (error) {
-    toast.error('Failed to save profile settings');
+  // Add phone validation
+  if (profileData.value.phone && !/^\d{10,15}$/.test(profileData.value.phone.replace(/\D/g, ''))) {
+    toast.error('Please enter a valid phone number');
+    return;
   }
+
+  try {
+    isSaving.value = true;
+    const token = localStorage.getItem('token');
+    
+    // Remove formatting before sending to server
+    const phoneToSend = profileData.value.phone.replace(/\D/g, '');
+    
+    const response = await fetch('http://localhost/snapsell/user.php?action=update_profile', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: profileData.value.name,
+        email: profileData.value.email,
+        phone: phoneToSend,
+        bio: profileData.value.bio
+      })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      toast.success('Profile updated successfully');
+      
+      // Update localStorage user data
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+      userData.name = profileData.value.name;
+      userData.email = profileData.value.email;
+      userData.phone = profileData.value.phone;
+      localStorage.setItem('userData', JSON.stringify(userData));
+    } else {
+      toast.error(data.error || 'Failed to update profile');
+    }
+  } catch (error) {
+    console.error('Error saving profile:', error);
+    toast.error('Failed to save profile changes');
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+const handleImageError = (e) => {
+  e.target.src = defaultAvatar;
 };
 
 const changePassword = async () => {
@@ -348,6 +465,42 @@ const deleteAccount = async () => {
     }
   }
 };
+
+// Fetch profile data
+const fetchProfileData = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost/snapsell/user.php?action=get_profile', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      profileData.value = {
+        name: data.user.name || '',
+        email: data.user.email || '',
+        phone: data.user.phone_number || '',
+        bio: data.user.bio || '',
+        avatar: data.user.profile_picture || defaultAvatar,
+        user_type: formatUserType(data.user.user_type || 'regular')
+      };
+    }
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    toast.error('Failed to load profile data');
+  }
+};
+
+const formatUserType = (type) => {
+  return type.charAt(0).toUpperCase() + type.slice(1);
+};
+
+// Initialize component
+onMounted(() => {
+  fetchProfileData();
+});
 </script>
 
 <style scoped>
@@ -384,6 +537,7 @@ const deleteAccount = async () => {
 .settings-content {
   flex: 1;
   max-width: 800px;
+  overflow: hidden; /* Prevent horizontal scroll */
 }
 
 .settings-section {
@@ -391,6 +545,8 @@ const deleteAccount = async () => {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  max-height: calc(100vh - 100px); /* Adjust height to prevent overflow */
+  overflow-y: auto; /* Enable scrolling */
 }
 
 .profile-header {
@@ -401,13 +557,14 @@ const deleteAccount = async () => {
 
 .avatar-section {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto;
 }
 
 .profile-avatar {
-  width: 100%;
-  height: 100%;
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -422,12 +579,12 @@ const deleteAccount = async () => {
   background: rgba(0,0,0,0.5);
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   color: white;
   opacity: 0;
+  transition: opacity 0.3s;
   cursor: pointer;
-  transition: opacity 0.3s ease;
 }
 
 .avatar-overlay:hover {
@@ -612,6 +769,272 @@ input:checked + .slider:before {
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+}
+
+.save-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.membership-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: #11101D;
+  color: white;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  margin-top: 8px;
+}
+
+/* Add smooth scrolling */
+.settings-section::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-section::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 8px;
+}
+
+.settings-section::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 8px;
+}
+
+.settings-section::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Base styles update */
+.settings-section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.settings-section h3 {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.settings-form {
+  max-width: 600px;
+}
+
+label {
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+input, textarea {
+  font-size: 0.9rem;
+  padding: 8px;
+}
+
+/* Mobile specific adjustments */
+@media (max-width: 768px) {
+  .settings-container {
+    padding: 12px;
+    gap: 15px;
+  }
+
+  .settings-section {
+    padding: 15px;
+  }
+
+  .settings-section h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .settings-section h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .nav-btn {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+
+  .nav-btn svg {
+    font-size: 0.9rem;
+  }
+
+  .profile-header {
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .avatar-section {
+    width: 100px;
+    height: 100px;
+  }
+
+  .profile-avatar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .profile-info h3 {
+    font-size: 1.1rem;
+  }
+
+  .profile-info p {
+    font-size: 0.9rem;
+  }
+
+  .membership-badge {
+    font-size: 0.75rem;
+    padding: 3px 6px;
+  }
+
+  .form-group {
+    margin-bottom: 15px;
+  }
+
+  label {
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+
+  input, textarea {
+    font-size: 0.85rem;
+    padding: 6px;
+  }
+
+  .save-btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+
+  .toggle-setting {
+    padding: 8px 0;
+    font-size: 0.9rem;
+  }
+
+  .switch {
+    width: 40px;
+    height: 20px;
+  }
+
+  .slider:before {
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(20px);
+  }
+
+  .danger-btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+
+  .payment-method {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+
+  .card-number {
+    font-size: 0.85rem;
+  }
+
+  .add-payment-btn {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Even smaller devices */
+@media (max-width: 420px) {
+  .settings-container {
+    padding: 10px;
+    gap: 12px;
+  }
+
+  .settings-section {
+    padding: 12px;
+  }
+
+  .settings-section h2 {
+    font-size: 1.2rem;
+  }
+
+  .settings-section h3 {
+    font-size: 1rem;
+  }
+
+  .nav-btn {
+    padding: 6px;
+    font-size: 0.85rem;
+  }
+
+  .nav-btn svg {
+    font-size: 0.85rem;
+  }
+
+  .avatar-section {
+    width: 80px;
+    height: 80px;
+  }
+
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+  }
+
+  .profile-info h3 {
+    font-size: 1rem;
+  }
+
+  .profile-info p {
+    font-size: 0.85rem;
+  }
+
+  .membership-badge {
+    font-size: 0.7rem;
+    padding: 2px 5px;
+  }
+
+  label {
+    font-size: 0.8rem;
+  }
+
+  input, textarea {
+    font-size: 0.8rem;
+    padding: 5px;
+  }
+
+  .save-btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+
+  .toggle-setting {
+    font-size: 0.85rem;
+  }
+
+  .danger-btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+
+  .payment-method {
+    padding: 6px;
+    font-size: 0.85rem;
+  }
+
+  .card-number {
+    font-size: 0.8rem;
+  }
+
+  .add-payment-btn {
+    padding: 6px;
+    font-size: 0.85rem;
   }
 }
 </style>

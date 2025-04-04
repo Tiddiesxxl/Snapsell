@@ -23,72 +23,49 @@ SET time_zone = "+00:00";
 
 -- --------------------------------------------------------
 
---
--- Table structure for table `temp_users`
---
+-- First, drop any existing tables in reverse order of dependencies
+SET FOREIGN_KEY_CHECKS = 0;
 
-CREATE TABLE `temp_users` (
-  `id` int(11) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `email` varchar(255) NOT NULL,
-  `password_hash` varchar(255) NOT NULL,
-  `verification_code` varchar(6) NOT NULL,
-  `expires_at` datetime NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `bookings`;
+DROP TABLE IF EXISTS `packages`;
+DROP TABLE IF EXISTS `download_history`;
+DROP TABLE IF EXISTS `media_purchases`;
+DROP TABLE IF EXISTS `user_activity_log`;
+DROP TABLE IF EXISTS `event_analytics`;
+DROP TABLE IF EXISTS `collection_analytics`;
+DROP TABLE IF EXISTS `media_views`;
+DROP TABLE IF EXISTS `ticket_purchases`;
+DROP TABLE IF EXISTS `event_tickets`;
+DROP TABLE IF EXISTS `media_access_rights`;
+DROP TABLE IF EXISTS `collection_sharing`;
+DROP TABLE IF EXISTS `media_items`;
+DROP TABLE IF EXISTS `collections`;
+DROP TABLE IF EXISTS `events`;
+DROP TABLE IF EXISTS `photographer_profiles`;
+DROP TABLE IF EXISTS `verification_codes`;
+DROP TABLE IF EXISTS `user_sessions`;
+DROP TABLE IF EXISTS `user_profiles`;
+DROP TABLE IF EXISTS `temp_users`;
+DROP TABLE IF EXISTS `users`;
 
---
--- Dumping data for table `temp_users`
---
+SET FOREIGN_KEY_CHECKS = 1;
 
-INSERT INTO `temp_users` (`id`, `name`, `email`, `password_hash`, `verification_code`, `expires_at`) VALUES
-(1, 'asdf', 'ayuba.nime@gmail.com', '$2y$10$ViWoVckTstUdv/Kq9XRv8ecDzIAFqGp2rE0s0siSkUbmd1VX0WdBW', '640112', '2024-11-10 20:51:43'),
-(2, 'afasdf', 'ayu.banime@gmail.com', '$2y$10$Lj40xo5AhLhrR.cDn0WR0OFpl9VJ6Qp3C9zBhKnHq1nBSaZcLZx0S', '440842', '2024-11-10 20:54:31'),
-(3, 'sdffsa', 'ayubanim.e@gmail.com', '$2y$10$E137oPpf2a2rfr3mnBwkDOHKNRTsyA7dj.KFwi7xnDBWR2KNBEQ8y', '894820', '2024-11-10 20:56:31'),
-(4, 'sdffsa', 'ayubanim.e@gmail.com', '$2y$10$3cp8huXvPEvSVXCU3RtpquSzltdyBE6ieaJJ2hlskIe1QJDAroBAW', '808711', '2024-11-10 20:56:43'),
-(5, 'sdffsa', 'ayubanim.e@gmail.com', '$2y$10$E92uwgrmGD/wXQTEXs.s0u6vUfWTqS2l06nzXkfZ5/Y6sCYKPJNby', '506337', '2024-11-10 21:16:00'),
-(6, 'sdffsa', 'ayubanim.e@gmail.com', '$2y$10$W7gkjJPit.27/ifh8skSk.SEdSBsEOSThkzF3SR3sruywcTEcRYPi', '448294', '2024-11-10 21:16:21'),
-(7, 'sdffsa', 'ayubanim.e@gmail.com', '$2y$10$4qfErVhCCwNKQ6eevO8EiOn0OJrwrPJ8Pe5gPzdZ3uTTMScp4lA9i', '470141', '2024-11-10 21:18:10');
+-- Now create tables in correct order (parent tables first)
 
--- --------------------------------------------------------
-
---
--- Table structure for table `users`
---
-
+-- 1. Core User Tables
 CREATE TABLE `users` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
   `email` varchar(255) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `is_active` tinyint(1) DEFAULT 1,
-  `last_login` timestamp NULL DEFAULT NULL
+  `last_login` timestamp NULL DEFAULT NULL,
+  `user_type` ENUM('regular', 'photographer', 'admin') DEFAULT 'regular',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `users`
---
-
-INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `created_at`, `updated_at`, `is_active`, `last_login`) VALUES
-(1, 'test', 'test@test.com', '$2y$10$8xOUkthbiJ.5UjJ/E6w.SetreVzpmT3VZ0Raa3rA8VyhHKkJBeZhS', '2024-11-10 12:41:14', '2024-11-10 12:41:14', 1, NULL),
-(2, 'new1', 'new@new.com', '$2y$10$K0ejVwy71NS6cMINxACCYOG0GEBsJLN3vhtrK0T8kd.odB4mBSmOW', '2024-11-10 12:59:15', '2024-11-10 12:59:15', 1, NULL),
-(3, 'DASD', 'ASDF@AD', '$2y$10$x.7b1M729nt3k7Gddy5oW.MtKArSqwcTTjji93Q1qNUshwwsTEkBu', '2024-11-10 13:58:30', '2024-11-10 13:58:30', 1, NULL),
-(4, 'asdf', 'grimwarayub@gmail.com', '$2y$10$bpjKZ/fW7WerqQQpO1VVQunUk0CRlxIN3HYgUsQZSaymvpD57I6Ae', '2024-11-10 14:14:45', '2024-11-10 14:14:45', 1, NULL),
-(5, 'test', 'test@test', '$2y$10$2ymB2Y//zg31gEilBzz2xeSbqZwBbzPbssNdOffnSQ48mFnfHCNpy', '2024-11-10 14:41:36', '2024-11-10 14:41:36', 1, NULL),
-(6, 'asudy', 'asdojas@gmail.so', '$2y$10$B7EymUPMxmfX4Z/sEUFUaON8PdH77KmAjxm6Qq/SB9Cx2CNAtY51G', '2024-11-10 15:24:45', '2024-11-10 15:24:45', 1, NULL),
-(7, 'sdfd', 'sdf@sasfgsd', '$2y$10$6IU1sJSS/f.8GHgBbuPyoOFodbSFgIetWBcOZDoqIIfcEBDoCoOjW', '2024-11-10 15:37:58', '2024-11-10 15:37:58', 1, NULL),
-(8, 'asdfa', 'ayubanime@gmail.com', '$2y$10$ItTI7mNw7ILVaNhVtFCJjej0TUXuMF9Rjc6BTEvZkQgRdUqGlvoce', '2024-11-10 15:39:13', '2024-11-10 15:39:13', 1, NULL),
-(9, 'sada', 'grimwarayasub@gmail.com', '$2y$10$gA/0sgdOg1I.3AJaDmGB8urnLJGUGQpHtKP87vOpb0m8bpts7REjS', '2024-11-10 15:56:49', '2024-11-10 15:56:49', 1, NULL),
-(10, 'ayub2', 'ayub@ayubxxl.site', '$2y$10$2/47zIFeabryb1s3y6BmwuRALl21Te5KpyAxl/h4vxMjIq5nf52xe', '2024-11-10 16:10:21', '2024-11-10 16:10:21', 1, NULL),
-(11, 'trial2', 'ayubclippaz@gmail.com', '$2y$10$mqe3htBG9jkYlF9dVILsMuF9R1s4XldEmSlUDMJGIKzYSMAx8DeIG', '2024-11-10 17:06:25', '2024-11-10 17:06:25', 1, NULL),
-(12, 'sdffsa', 'ayubanim.e@gmail.com', '$2y$10$rA.D2FpwnFY36Ot7IOmwm.2dxpmsLTHCFy0kR1xAn1dW6w7Ju2ayW', '2024-11-10 18:08:48', '2024-11-10 18:08:48', 1, NULL);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `user_profiles`
---
 
 CREATE TABLE `user_profiles` (
   `user_id` int(11) NOT NULL,
@@ -97,93 +74,314 @@ CREATE TABLE `user_profiles` (
   `phone_number` varchar(20) DEFAULT NULL,
   `address` text DEFAULT NULL,
   `website` varchar(255) DEFAULT NULL,
-  `social_media` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`social_media`)),
-  `preferences` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`preferences`))
+  `social_media` JSON DEFAULT NULL,
+  `preferences` JSON DEFAULT NULL,
+  PRIMARY KEY (`user_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `user_sessions`
---
+CREATE TABLE `temp_users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `verification_code` varchar(6) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `user_sessions` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) DEFAULT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
   `session_token` varchar(255) NOT NULL,
-  `expires_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `expires_at` timestamp NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `ip_address` varchar(45) DEFAULT NULL,
-  `user_agent` text DEFAULT NULL
+  `user_agent` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `user_sessions`
---
+-- 2. Events Table (needed before collections)
+CREATE TABLE `events` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `organizer_id` INT NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `event_type` VARCHAR(100),
+    `start_datetime` DATETIME NOT NULL,
+    `end_datetime` DATETIME NOT NULL,
+    `venue_name` VARCHAR(255),
+    `address` TEXT,
+    `max_capacity` INT,
+    `status` ENUM('draft', 'published', 'cancelled', 'completed') DEFAULT 'draft',
+    `cover_image_path` VARCHAR(255),
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`organizer_id`) REFERENCES `users`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `user_sessions` (`id`, `user_id`, `session_token`, `expires_at`, `created_at`, `ip_address`, `user_agent`) VALUES
-(1, 1, 'b603a8f96be2e517f864388f843537e15fc8c133ae30561ad49d49bb087c9481', '2024-11-11 10:41:29', '2024-11-10 12:41:29', NULL, NULL),
-(2, 1, 'e999a07148f24796e9ddf001b3a1beebdb6a712ec4d21d4b8f96509f4e1d093c', '2024-11-11 10:58:40', '2024-11-10 12:58:40', NULL, NULL),
-(3, 1, '742c4a2eb74daf4f8c3a78d59701bf752feb32a1a3997085ed041340381184d5', '2024-11-11 12:41:46', '2024-11-10 14:41:46', NULL, NULL),
-(4, 1, '3f4bf35bf17f3fd903ed00d70f2a04cb55b723e408c95dd4582deb5a0a1b58d9', '2024-11-11 13:21:03', '2024-11-10 15:21:03', NULL, NULL),
-(5, 1, '6823bbdea57b9895f6676dd2482c428ce46660b0d66c522940f23aeb654416fa', '2024-11-11 13:38:12', '2024-11-10 15:38:12', NULL, NULL),
-(6, 1, '513ebf4b3ce52b4b27d75737ca10a1858c86032e16ea635e038b53fade56aed5', '2024-11-11 13:51:08', '2024-11-10 15:51:08', NULL, NULL),
-(7, 1, '70f8e6206f85156e97836837e467904670f43ef085c6c7fac4d4715a50293f9d', '2024-11-11 13:51:10', '2024-11-10 15:51:10', NULL, NULL),
-(8, 1, '788f591be1e9fa73053183c3103f0aa1da9cecc463cbada56f3677f6fa594341', '2024-11-11 13:51:10', '2024-11-10 15:51:10', NULL, NULL),
-(9, 1, '037a5136a440eff78ae37e62779029b1ebd781f41eab661110db285d6d34d57b', '2024-11-11 13:51:10', '2024-11-10 15:51:10', NULL, NULL),
-(10, 1, '7402a4211817786f1e65e049727bc55c1e5138535103e17280b5943598205c06', '2024-11-11 13:51:11', '2024-11-10 15:51:11', NULL, NULL),
-(11, 1, '7bd511e6992174f000f2b7d903e3ac24864582d9e2b0bebad4c6c45a3c2fdc5f', '2024-11-11 13:51:11', '2024-11-10 15:51:11', NULL, NULL),
-(12, 1, '1675a0a3b99df446db2cdf953416541da49606b8afa6477fbdcf01921a421c96', '2024-11-11 13:51:27', '2024-11-10 15:51:27', NULL, NULL),
-(13, 1, '4b7c7ab776bc5ed6660cb38b08ec9dac435a386924d0c6b3aecf574849b0a5c8', '2024-11-11 13:51:27', '2024-11-10 15:51:27', NULL, NULL),
-(14, 1, '987c04804dece2aa5b64ca9ba8905c77ea55d9db59266d1ace7c7562c3728545', '2024-11-11 13:51:42', '2024-11-10 15:51:42', NULL, NULL),
-(15, 1, '0a914e7cbb49bd8370abd55005bf0b9bae043604c1f9e485b919c618fec3c6cb', '2024-11-11 13:51:49', '2024-11-10 15:51:49', NULL, NULL),
-(16, 1, '165c646083b47bcc70c6f679e0e1970741c94f5b62b343df956ce5870eb20e53', '2024-11-11 13:51:49', '2024-11-10 15:51:49', NULL, NULL),
-(17, 1, 'f87d13d3f82846f358e40b9fa521e363252a82983b2ada2803c422609ad6db84', '2024-11-11 13:52:40', '2024-11-10 15:52:40', NULL, NULL),
-(18, 1, 'b659f4ba3e36bc9f8e2bafc5e4e659c3cb9212770333ed59db87235995251bb7', '2024-11-11 13:52:42', '2024-11-10 15:52:42', NULL, NULL),
-(19, 1, '8532281bf2ac46170b027f8d70ffa610812a30ec3badfd81ed46409f52d95aed', '2024-11-11 13:52:42', '2024-11-10 15:52:42', NULL, NULL),
-(20, 1, '44f25ce99c3cdc214774ba0a1dd34d8904f867cd71cfbff27345ff938b7120cc', '2024-11-11 13:52:43', '2024-11-10 15:52:43', NULL, NULL),
-(21, 1, '07e22bb79e789b6c3ed02bd83c6e125bdc8e8cfd8027c9dc6ee9842051ba94fa', '2024-11-11 13:52:43', '2024-11-10 15:52:43', NULL, NULL),
-(22, 1, '907c3b129256139496f75c5060272732ddcc21dd5a77160ec667cb7f55229228', '2024-11-11 13:52:43', '2024-11-10 15:52:43', NULL, NULL),
-(23, 1, '8bf50f8b0b87f9fa13f0a8c875c5e0d752c60183ce47d822b994928ac858b276', '2024-11-11 13:53:04', '2024-11-10 15:53:04', NULL, NULL),
-(24, 1, '7730a968ac1d395daee7510db7995eea36467c6315181b6f623dbfec5184379f', '2024-11-11 13:53:06', '2024-11-10 15:53:06', NULL, NULL),
-(25, 1, '61f909f342868bc47cd21b0aec07bef9a598535802e54ab61b6de2043e471a16', '2024-11-11 13:53:06', '2024-11-10 15:53:06', NULL, NULL),
-(26, 1, '350867c2b732a30a768d98a7fc0bb1932ba13d94158dc24c76bed9b0a3c7755f', '2024-11-11 13:53:06', '2024-11-10 15:53:06', NULL, NULL),
-(27, 1, '132ba00371d525f77e043a89b4db00691e8a4ff39b8464497583632bed505108', '2024-11-11 13:53:07', '2024-11-10 15:53:07', NULL, NULL),
-(28, 1, '9e887dcbb6e63c08781adbfcaba554943152d18aafad6d2f6a108f420c6ad405', '2024-11-11 13:53:07', '2024-11-10 15:53:07', NULL, NULL),
-(29, 1, '32aa1ac3f36cb96324cd1e419b36859d5fee72ce2c45b00b3c5490645d542887', '2024-11-11 13:53:28', '2024-11-10 15:53:28', NULL, NULL),
-(30, 1, '44b1da5c3b33ff1794cf18aee8140e8f8390099ef2a344fde4fb1c55f15661a3', '2024-11-11 13:53:30', '2024-11-10 15:53:30', NULL, NULL),
-(31, 11, 'e7df3f4121aad1c1fd5a87e6e34833cbb4b593b89715a7bd0d9a07cea85e9ae1', '2024-11-11 17:35:32', '2024-11-10 17:35:32', NULL, NULL),
-(32, 11, '5b239b5fcb658860e3cd8aa4d8d3aec910da3f24cfa0a448d15a73786a90e296', '2024-11-11 18:10:28', '2024-11-10 18:10:28', NULL, NULL);
+-- 3. Collections Table
+CREATE TABLE `collections` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `creator_id` INT NOT NULL,
+    `event_id` INT,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `cover_image_id` INT,
+    `access_type` ENUM('public', 'private', 'password_protected') NOT NULL,
+    `access_password` VARCHAR(255),
+    `download_enabled` BOOLEAN DEFAULT TRUE,
+    `watermark_enabled` BOOLEAN DEFAULT TRUE,
+    `expiry_date` DATE,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`creator_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`event_id`) REFERENCES `events`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
+-- 4. Media Items Table
+CREATE TABLE `media_items` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `creator_id` INT NOT NULL,
+    `collection_id` INT,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `media_type` ENUM('photo', 'video') NOT NULL,
+    `file_path` VARCHAR(255) NOT NULL,
+    `thumbnail_path` VARCHAR(255),
+    `original_filename` VARCHAR(255),
+    `file_size` INT,
+    `metadata` JSON,
+    `price` DECIMAL(10,2),
+    `is_downloadable` BOOLEAN DEFAULT TRUE,
+    `watermark_path` VARCHAR(255),
+    `status` ENUM('active', 'draft', 'archived') DEFAULT 'active',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`creator_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`collection_id`) REFERENCES `collections`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Table structure for table `verification_codes`
---
+-- 5. Collection Related Tables
+CREATE TABLE `collection_sharing` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `collection_id` INT NOT NULL,
+    `shared_email` VARCHAR(255) NOT NULL,
+    `access_code` VARCHAR(255),
+    `expires_at` DATETIME,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`collection_id`) REFERENCES `collections`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE `media_access_rights` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `user_id` INT NOT NULL,
+    `collection_id` INT NOT NULL,
+    `access_type` ENUM('view', 'download', 'purchase') NOT NULL,
+    `granted_via` ENUM('ticket', 'direct_share', 'purchase') NOT NULL,
+    `expires_at` DATETIME,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`collection_id`) REFERENCES `collections`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 6. Event Related Tables
+CREATE TABLE `event_tickets` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `event_id` INT NOT NULL,
+    `ticket_type` VARCHAR(100) NOT NULL,
+    `description` TEXT,
+    `price` DECIMAL(10,2) NOT NULL,
+    `quantity_available` INT NOT NULL,
+    `quantity_sold` INT DEFAULT 0,
+    `sale_start_date` DATETIME,
+    `sale_end_date` DATETIME,
+    `includes_photo_access` BOOLEAN DEFAULT FALSE,
+    `photo_access_duration` INT,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`event_id`) REFERENCES `events`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `ticket_purchases` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `ticket_id` INT NOT NULL,
+    `event_id` INT NOT NULL,
+    `buyer_id` INT NOT NULL,
+    `quantity` INT NOT NULL,
+    `total_amount` DECIMAL(10,2) NOT NULL,
+    `status` ENUM('pending', 'completed', 'cancelled', 'refunded') NOT NULL,
+    `ticket_code` VARCHAR(255) UNIQUE,
+    `purchase_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`ticket_id`) REFERENCES `event_tickets`(`id`),
+    FOREIGN KEY (`event_id`) REFERENCES `events`(`id`),
+    FOREIGN KEY (`buyer_id`) REFERENCES `users`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 7. Analytics Tables
+CREATE TABLE `media_views` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `media_id` INT NOT NULL,
+    `user_id` INT,
+    `view_duration` INT,
+    `device_type` VARCHAR(50),
+    `browser` VARCHAR(100),
+    `ip_address` VARCHAR(45),
+    `viewed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`media_id`) REFERENCES `media_items`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `collection_analytics` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `collection_id` INT NOT NULL,
+    `total_views` INT DEFAULT 0,
+    `unique_visitors` INT DEFAULT 0,
+    `total_downloads` INT DEFAULT 0,
+    `total_purchases` INT DEFAULT 0,
+    `revenue` DECIMAL(10,2) DEFAULT 0,
+    `last_updated` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`collection_id`) REFERENCES `collections`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `event_analytics` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `event_id` INT NOT NULL,
+    `tickets_sold` INT DEFAULT 0,
+    `revenue_generated` DECIMAL(10,2) DEFAULT 0,
+    `page_views` INT DEFAULT 0,
+    `unique_visitors` INT DEFAULT 0,
+    `conversion_rate` DECIMAL(5,2),
+    `last_updated` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`event_id`) REFERENCES `events`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 8. Activity and Purchase Tracking
+CREATE TABLE `user_activity_log` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `user_id` INT NOT NULL,
+    `activity_type` ENUM('view', 'download', 'purchase', 'share', 'comment', 'like'),
+    `target_type` ENUM('media', 'collection', 'event', 'profile'),
+    `target_id` INT,
+    `occurred_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `metadata` JSON,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `media_purchases` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `buyer_id` INT NOT NULL,
+    `media_id` INT NOT NULL,
+    `amount` DECIMAL(10,2) NOT NULL,
+    `license_type` VARCHAR(50),
+    `download_count` INT DEFAULT 0,
+    `purchase_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`buyer_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`media_id`) REFERENCES `media_items`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `download_history` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `user_id` INT NOT NULL,
+    `media_id` INT NOT NULL,
+    `download_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `ip_address` VARCHAR(45),
+    `user_agent` TEXT,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`media_id`) REFERENCES `media_items`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 9. Photographer Specific Tables
+CREATE TABLE `photographer_profiles` (
+    `user_id` INT PRIMARY KEY,
+    `business_name` VARCHAR(255),
+    `portfolio_url` VARCHAR(255),
+    `specialties` TEXT,
+    `equipment` TEXT,
+    `pricing_info` JSON,
+    `booking_availability` JSON,
+    `watermark_path` VARCHAR(255),
+    `default_license_terms` TEXT,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `packages` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `photographer_id` INT NOT NULL,
+    `name` VARCHAR(255) NOT NULL,
+    `description` TEXT,
+    `price` DECIMAL(10,2) NOT NULL,
+    `includes_json` JSON,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`photographer_id`) REFERENCES `users`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `bookings` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `client_id` INT NOT NULL,
+    `photographer_id` INT NOT NULL,
+    `package_id` INT,
+    `event_date` DATETIME NOT NULL,
+    `status` ENUM('pending', 'confirmed', 'completed', 'cancelled') NOT NULL,
+    `total_amount` DECIMAL(10,2) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`client_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`photographer_id`) REFERENCES `users`(`id`),
+    FOREIGN KEY (`package_id`) REFERENCES `packages`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 10. Create Analytics Views
+CREATE OR REPLACE VIEW revenue_analytics AS
+SELECT 
+    DATE(mp.purchase_date) as date,
+    u.id as creator_id,
+    u.name as creator_name,
+    COUNT(mp.id) as total_sales,
+    SUM(mp.amount) as total_revenue,
+    AVG(mp.amount) as average_sale_price
+FROM media_purchases mp
+JOIN media_items mi ON mp.media_id = mi.id
+JOIN users u ON mi.creator_id = u.id
+GROUP BY DATE(mp.purchase_date), u.id, u.name;
+
+CREATE OR REPLACE VIEW collection_performance AS
+SELECT 
+    c.id,
+    c.title,
+    c.creator_id,
+    COUNT(DISTINCT mv.user_id) as unique_viewers,
+    COUNT(mv.id) as total_views,
+    COUNT(DISTINCT mp.id) as total_purchases,
+    SUM(mp.amount) as total_revenue
+FROM collections c
+LEFT JOIN media_items mi ON mi.collection_id = c.id
+LEFT JOIN media_views mv ON mv.media_id = mi.id
+LEFT JOIN media_purchases mp ON mp.media_id = mi.id
+GROUP BY c.id, c.title, c.creator_id;
+
+-- Add verification_codes table that was in your original schema
 CREATE TABLE `verification_codes` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `code` varchar(6) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `expires_at` datetime NOT NULL,
-  `used` tinyint(1) DEFAULT 0
+  `used` tinyint(1) DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `verification_codes`
---
+-- Add useful indexes for performance
+CREATE INDEX idx_media_items_status ON media_items(status);
+CREATE INDEX idx_events_status ON events(status);
+CREATE INDEX idx_collections_access_type ON collections(access_type);
+CREATE INDEX idx_ticket_purchases_status ON ticket_purchases(status);
+CREATE INDEX idx_media_views_viewed_at ON media_views(viewed_at);
+CREATE INDEX idx_user_activity_occurred_at ON user_activity_log(occurred_at);
 
-INSERT INTO `verification_codes` (`id`, `user_id`, `code`, `created_at`, `expires_at`, `used`) VALUES
-(51, 11, '856464', '2024-11-10 17:06:39', '2024-11-10 18:11:39', 0),
-(52, 11, '352569', '2024-11-10 17:09:34', '2024-11-10 18:14:34', 0),
-(53, 11, '698137', '2024-11-10 17:17:11', '2024-11-10 18:22:11', 0),
-(54, 11, '570183', '2024-11-10 17:17:12', '2024-11-10 18:22:12', 0),
-(55, 11, '729611', '2024-11-10 17:24:51', '2024-11-10 18:29:51', 0),
-(56, 11, '569548', '2024-11-10 17:26:08', '2024-11-10 18:31:08', 0),
-(57, 11, '527233', '2024-11-10 17:34:56', '2024-11-10 20:39:56', 1),
-(58, 11, '977632', '2024-11-10 18:09:03', '2024-11-10 19:14:03', 0),
-(59, 11, '421163', '2024-11-10 18:10:08', '2024-11-10 21:15:08', 1);
+COMMIT;
 
 --
 -- Indexes for dumped tables

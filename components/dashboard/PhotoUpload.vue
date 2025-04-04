@@ -44,11 +44,14 @@
 <script setup>
 import { ref } from 'vue';
 import { useToast } from 'vue-toastification';
+import { useR2Storage } from '~/composables/useR2Storage';
 
 const toast = useToast();
 const fileInput = ref(null);
 const selectedFiles = ref([]);
 const dragover = ref(false);
+
+const { uploadToR2, isUploading, uploadProgress } = useR2Storage();
 
 const handleFileSelect = (event) => {
   const files = Array.from(event.target.files);
@@ -83,15 +86,27 @@ const removeFile = (index) => {
 
 const uploadFiles = async () => {
   try {
-    const formData = new FormData();
-    selectedFiles.value.forEach(file => {
-      formData.append('photos[]', file.file);
-    });
+    const uploadedUrls = [];
+    
+    // Upload each file to R2
+    for (const fileData of selectedFiles.value) {
+      const fileUrl = await uploadToR2(fileData.file, 'gallery');
+      uploadedUrls.push({
+        url: fileUrl,
+        name: fileData.name
+      });
+    }
 
-    // Add your API endpoint here
-    const response = await fetch('your-api-endpoint/upload', {
+    // Save uploaded files to your database
+    const response = await fetch('http://localhost/snapsell/media.php?action=save_uploads', {
       method: 'POST',
-      body: formData
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        files: uploadedUrls
+      })
     });
 
     const data = await response.json();
